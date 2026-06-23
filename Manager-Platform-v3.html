@@ -1,0 +1,1739 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>部門指揮中心 | Manager Platform</title>
+<style>
+  :root{
+    --blue:#1f4e96; --blue2:#2f6fd0; --xm:#8aa6c8; --mx:#c9b85a; --gm:#b39ddb;
+    --green:#36b37e; --new:#2bb4e0; --bg:#eef2f7; --card:#fff; --line:#dde4ee;
+    --text:#1c2b45; --muted:#6b7a90; --warn:#e0563f;
+    /* iOS / Liquid Glass — 可即時調整的參數 */
+    --ui-blur:28px; --ui-sat:205%; --ui-glassA:.52; --ui-glassB:.7; --ui-rscale:1;
+    --glass:rgba(255,255,255,var(--ui-glassA)); --glass-strong:rgba(255,255,255,var(--ui-glassB));
+    --glass-line:rgba(255,255,255,.6); --glass-blur:saturate(var(--ui-sat)) blur(var(--ui-blur));
+    --r-lg:calc(22px * var(--ui-rscale)); --r-md:calc(16px * var(--ui-rscale)); --r-sm:calc(11px * var(--ui-rscale));
+    --shadow-1:0 1px 2px rgba(30,50,90,.06),0 6px 20px rgba(30,50,90,.06);
+    --shadow-2:0 8px 30px rgba(30,50,90,.12);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html{overscroll-behavior:none;background:#e7ecf6;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro TC","SF Pro Text","PingFang TC","Microsoft JhengHei","Segoe UI",sans-serif;
+    color:var(--text);font-size:14px;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+    min-height:100vh;overscroll-behavior:none;
+    background:
+      radial-gradient(1100px 700px at 12% -8%, rgba(47,111,208,.30), transparent 60%),
+      radial-gradient(900px 650px at 100% 0%, rgba(179,157,219,.28), transparent 55%),
+      radial-gradient(800px 700px at 50% 120%, rgba(54,179,126,.18), transparent 60%),
+      linear-gradient(160deg,#eef3fb,#e7ecf6 55%,#eaf1f5);
+    background-attachment:fixed;
+  }
+  header{
+    background:linear-gradient(120deg,rgba(31,78,150,.78),rgba(47,111,208,.72));
+    -webkit-backdrop-filter:var(--glass-blur);backdrop-filter:var(--glass-blur);
+    color:#fff;padding:14px 24px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+    position:relative;z-index:2;border-bottom:1px solid rgba(255,255,255,.18);
+    box-shadow:0 4px 24px rgba(20,40,80,.18);
+  }
+  .topbar{position:sticky;top:0;z-index:70;}
+  header h1{font-size:20px;font-weight:800;letter-spacing:.5px;}
+  header .sub{font-size:12px;opacity:.85;}
+  header .spacer{flex:1;}
+  .hactions{display:flex;align-items:center;gap:2px;}
+  header button{background:transparent;color:#fff;border:none;width:36px;height:36px;flex:0 0 auto;padding:0;border-radius:50%;cursor:pointer;font-size:20px;line-height:1;display:inline-flex;align-items:center;justify-content:center;transition:background .2s,transform .15s;filter:saturate(1.5);}
+  .hactions button{width:36px;height:36px;font-size:20px;}
+  header button:hover{background:rgba(255,255,255,.22);transform:translateY(-1px);}
+  header button:active{transform:scale(.92);}
+  .menu .menu-item{filter:none;}
+  .menu-wrap{position:relative;}
+  .menu{position:absolute;right:0;top:calc(100% + 8px);background:var(--glass-strong);-webkit-backdrop-filter:var(--glass-blur);backdrop-filter:var(--glass-blur);border:1px solid var(--glass-line);border-radius:var(--r-md);box-shadow:var(--shadow-2);padding:6px;min-width:236px;z-index:60;}
+  .menu .menu-sec{font-size:11px;font-weight:700;color:var(--muted);padding:6px 10px 2px;}
+  .menu .menu-item{display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:9px 10px;border-radius:9px;font-size:13px;cursor:pointer;transition:background .15s;}
+  .menu .menu-item:hover{background:rgba(47,111,208,.12);}
+  .menu .menu-div{height:1px;background:var(--line);margin:6px 4px;}
+  nav{display:flex;align-items:center;gap:6px;padding:0 24px;height:44px;min-height:44px;max-height:44px;box-sizing:border-box;flex:0 0 auto;overflow-x:auto;overflow-y:hidden;position:relative;z-index:1;
+    background:var(--glass);-webkit-backdrop-filter:var(--glass-blur);backdrop-filter:var(--glass-blur);
+    border-bottom:1px solid var(--glass-line);box-shadow:0 2px 14px rgba(30,50,90,.06);}
+  nav .tab{padding:6px 16px;cursor:pointer;font-weight:600;color:var(--muted);border-radius:12px;white-space:nowrap;transition:all .18s;}
+  nav .tab:hover{color:var(--blue);background:rgba(255,255,255,.5);}
+  nav .tab.active{color:#fff;background:linear-gradient(120deg,var(--blue),var(--blue2));box-shadow:0 4px 14px rgba(31,78,150,.32);}
+  main{padding:22px 24px 60px;max-width:1400px;margin:0 auto;}
+  .row{display:flex;gap:16px;flex-wrap:wrap;}
+  .grid{display:grid;gap:14px;}
+  .section-title{font-size:16px;font-weight:800;margin:6px 0 12px;color:var(--blue);display:flex;align-items:center;gap:10px;}
+  .section-title .count{font-size:12px;font-weight:600;color:var(--blue);background:rgba(47,111,208,.12);border:1px solid rgba(47,111,208,.18);padding:2px 10px;border-radius:999px;}
+  .btn{background:linear-gradient(120deg,var(--blue),var(--blue2));color:#fff;border:none;padding:8px 16px;border-radius:12px;cursor:pointer;font-size:13px;font-weight:600;box-shadow:0 4px 12px rgba(31,78,150,.25);transition:transform .15s,box-shadow .2s,filter .2s;}
+  .btn:hover{filter:brightness(1.06);transform:translateY(-1px);box-shadow:0 6px 18px rgba(31,78,150,.32);}
+  .btn:active{transform:translateY(0) scale(.98);}
+  .btn.ghost{background:var(--glass-strong);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);color:var(--blue);border:1px solid rgba(31,78,150,.35);box-shadow:var(--shadow-1);}
+  .btn.sm{padding:5px 11px;font-size:12px;border-radius:10px;}
+  .btn.danger{background:var(--glass-strong);color:var(--warn);border:1px solid rgba(224,86,63,.5);box-shadow:var(--shadow-1);}
+
+  /* KPI big cards */
+  .kpi{flex:1;min-width:180px;border-radius:var(--r-lg);padding:18px 20px;color:#fff;box-shadow:var(--shadow-2);position:relative;overflow:hidden;}
+  .kpi::after{content:"";position:absolute;inset:0;background:linear-gradient(150deg,rgba(255,255,255,.28),transparent 45%);pointer-events:none;}
+  .kpi .label{font-size:14px;opacity:.95;font-weight:600;}
+  .kpi .pct{font-size:42px;font-weight:800;line-height:1.1;margin-top:6px;}
+  .kpi .label,.kpi .pct,.kpi .bar{position:relative;z-index:1;}
+  .kpi .bar{height:7px;background:rgba(255,255,255,.35);border-radius:999px;margin-top:8px;overflow:hidden;}
+  .kpi .bar>span{display:block;height:100%;background:#fff;border-radius:999px;transition:width .6s cubic-bezier(.2,.8,.2,1);}
+
+  /* generic card */
+  .card{background:var(--glass-strong);-webkit-backdrop-filter:var(--glass-blur);backdrop-filter:var(--glass-blur);border:1px solid var(--glass-line);border-radius:var(--r-md);padding:16px;box-shadow:var(--shadow-1);transition:transform .18s,box-shadow .2s;}
+  .card:hover{box-shadow:var(--shadow-2);}
+  .pcard{border-left:5px solid var(--xm);}
+  .pcard.g-MX{border-left-color:var(--mx);}
+  .pcard.g-GM{border-left-color:var(--gm);}
+  .pcard.cat-FIDM{border-left-color:var(--mx);}
+  .pcard .top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}
+  .pcard .name{font-weight:800;font-size:15px;}
+  .pcard .meta{color:var(--muted);font-size:12px;margin-top:2px;}
+  .pcard .phase{margin:10px 0 8px;font-size:13px;min-height:34px;}
+  .pcard .foot{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--muted);}
+  .pcard{transition:transform .2s cubic-bezier(.2,.8,.2,1),box-shadow .2s;}
+  .pcard:hover{transform:translateY(-3px);box-shadow:var(--shadow-2);}
+  .badge{font-size:11px;font-weight:700;padding:3px 11px;border-radius:999px;white-space:nowrap;border:1px solid transparent;}
+  .badge.ok{background:rgba(54,179,126,.16);color:#2a8c61;border-color:rgba(54,179,126,.3);}
+  .badge.new{background:rgba(43,180,224,.16);color:#1c8bb0;border-color:rgba(43,180,224,.3);}
+  .badge.warn{background:rgba(224,86,63,.16);color:var(--warn);border-color:rgba(224,86,63,.3);}
+  .badge.soon{background:rgba(217,142,21,.16);color:#b6740c;border-color:rgba(217,142,21,.3);}
+  .badge.go{background:rgba(47,111,208,.16);color:#2f6fd0;border-color:rgba(47,111,208,.3);}
+  .pbar{height:9px;background:rgba(120,140,170,.18);border-radius:999px;overflow:hidden;margin-top:4px;box-shadow:inset 0 1px 2px rgba(30,50,90,.08);}
+  .pbar>span{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#2f6fd0,#1f4e96);transition:width .6s cubic-bezier(.2,.8,.2,1);}
+  .progress-num{font-weight:800;font-size:18px;}
+  .tag{display:inline-block;background:rgba(47,111,208,.12);color:var(--blue);font-size:11px;padding:3px 10px;border-radius:999px;margin:2px 3px 0 0;border:1px solid rgba(47,111,208,.18);}
+  .tag.skill{background:rgba(106,79,176,.12);color:#6a4fb0;border-color:rgba(106,79,176,.2);}
+  .cardrow{display:flex;gap:8px;margin-top:10px;}
+
+  /* bar chart */
+  .chart{display:flex;gap:8px;padding-top:18px;}
+  .chart .yax{display:flex;flex-direction:column;justify-content:space-between;height:200px;flex:0 0 auto;font-size:10px;color:var(--muted);text-align:right;}
+  .chart .yax span{line-height:1;}
+  .chart .plot{flex:1;min-width:0;}
+  .chart .plotarea{position:relative;height:200px;border-bottom:2px solid var(--line);background:repeating-linear-gradient(to top,var(--line) 0 1px,transparent 1px 20%);}
+  .chart .bars{position:absolute;inset:0;display:flex;align-items:stretch;gap:6px;padding:0 6px;}
+  .chart .col{flex:1;min-width:0;height:100%;display:flex;align-items:flex-end;justify-content:center;}
+  .chart .bar{width:72%;max-width:42px;border-radius:8px 8px 3px 3px;background:linear-gradient(180deg,var(--blue2),var(--blue));position:relative;transition:height .5s cubic-bezier(.2,.8,.2,1),filter .2s;box-shadow:0 2px 8px rgba(31,78,150,.25);}
+  .chart .col:hover .bar{filter:brightness(1.1) saturate(1.1);}
+  .chart .bar .v{position:absolute;top:-16px;left:50%;transform:translateX(-50%);font-size:11px;font-weight:700;color:var(--text);}
+  .chart .xlabs{display:flex;gap:6px;padding:5px 6px 0;}
+  .chart .xl{flex:1;min-width:0;font-size:10px;color:var(--muted);text-align:center;line-height:1.2;word-break:break-word;}
+
+  /* table-ish member */
+  .mcard{display:flex;flex-direction:column;gap:8px;}
+  .load-meter{height:10px;background:rgba(120,140,170,.18);border-radius:999px;overflow:hidden;box-shadow:inset 0 1px 2px rgba(30,50,90,.08);}
+  .load-meter>span{display:block;height:100%;border-radius:999px;transition:width .6s cubic-bezier(.2,.8,.2,1);}
+  .mtable{width:100%;border-collapse:separate;border-spacing:0;background:rgba(255,255,255,.82);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border:1px solid var(--glass-line);border-radius:var(--r-md);overflow:hidden;box-shadow:var(--shadow-1);font-size:13px;}
+  .mtable th{background:#eef3fb;color:var(--blue);font-size:12px;text-align:left;padding:9px 12px;font-weight:700;white-space:nowrap;}
+  .mtable td{padding:8px 12px;border-top:1px solid #eef2f7;vertical-align:middle;}
+  .mtable tbody tr:hover{background:#f6f9fe;}
+  .mtable .teamrow td{background:#f4f7fc;font-weight:700;color:var(--blue);padding:6px 12px;}
+  .mtable .nm{font-weight:700;}
+  .mtable .ti{color:var(--muted);font-size:11px;}
+  .mini-meter{height:7px;width:64px;background:rgba(120,140,170,.18);border-radius:999px;overflow:hidden;display:inline-block;vertical-align:middle;margin-right:6px;}
+  .mini-meter>span{display:block;height:100%;border-radius:999px;}
+
+  /* modal */
+  .modal-bg{position:fixed;inset:0;background:rgba(20,35,65,.32);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);display:none;align-items:flex-start;justify-content:center;z-index:200;overflow:auto;padding:9vh 16px 48px;}
+  .modal-bg.show{display:flex;}
+  .modal{background:var(--glass-strong);-webkit-backdrop-filter:var(--glass-blur);backdrop-filter:var(--glass-blur);border:1px solid var(--glass-line);border-radius:var(--r-lg);width:720px;max-width:100%;padding:24px;box-shadow:0 30px 80px rgba(15,30,60,.35);animation:modalIn .28s cubic-bezier(.2,.8,.2,1);}
+  @keyframes modalIn{from{opacity:0;transform:translateY(14px) scale(.97);}to{opacity:1;transform:none;}}
+  .modal h3{color:var(--blue);margin-bottom:14px;}
+  .field{margin-bottom:12px;}
+  .field label{display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:4px;}
+  .field input,.field select,.field textarea{width:100%;padding:9px 12px;border:1px solid var(--line);border-radius:11px;font-size:13px;font-family:inherit;background:rgba(255,255,255,.7);transition:border-color .18s,box-shadow .18s,background .18s;}
+  .field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--blue2);background:#fff;box-shadow:0 0 0 3px rgba(47,111,208,.18);}
+  .field input:not([type=color]):not([type=checkbox]),.field select{height:40px;line-height:1.3;}
+  .field textarea{height:auto;}
+  .field .hint{font-size:11px;color:var(--muted);margin-top:3px;}
+  .checkbox-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;max-height:150px;overflow:auto;border:1px solid var(--line);border-radius:11px;padding:8px;background:rgba(255,255,255,.5);}
+  .checkbox-grid label{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:500;color:var(--text);white-space:nowrap;}
+  .checkbox-grid input[type=checkbox]{width:auto;flex:0 0 auto;margin:0;padding:0;}
+  .modal-foot{display:flex;justify-content:flex-end;gap:8px;margin-top:16px;}
+  .match-result{margin-top:18px;}
+  .empty{color:var(--muted);text-align:center;padding:40px;font-size:13px;}
+  .pill-sel{display:flex;flex-wrap:wrap;gap:6px;}
+  .pill-sel .p{padding:6px 14px;border:1px solid var(--line);border-radius:999px;cursor:pointer;font-size:12px;background:rgba(255,255,255,.6);transition:all .18s;}
+  .pill-sel .p:hover{border-color:var(--blue2);transform:translateY(-1px);}
+  .pill-sel .p.on{background:linear-gradient(120deg,var(--blue),var(--blue2));color:#fff;border-color:transparent;box-shadow:0 3px 10px rgba(31,78,150,.3);}
+  .note{background:rgba(255,247,230,.8);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);border:1px solid #ffe1a8;color:#8a6d3b;padding:10px 14px;border-radius:var(--r-sm);font-size:12px;margin-bottom:14px;}
+</style>
+</head>
+<body>
+<script id="seedData" type="application/json"></script>
+<div class="topbar">
+<header>
+  <div>
+    <h1><span id="appTitle" onclick="showDeptSetup(false)" title="點擊設定部門" style="cursor:pointer;border-radius:8px;padding:1px 4px;transition:background .15s" onmouseover="this.style.background='rgba(255,255,255,.18)'" onmouseout="this.style.background='transparent'">部門指揮中心</span> <span style="font-size:13px;font-weight:700;color:#fff;background:rgba(255,255,255,.22);border:1px solid rgba(255,255,255,.35);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);border-radius:12px;padding:2px 10px;vertical-align:middle;margin-left:6px" id="appVer">v3.0</span></h1>
+  </div>
+  <div class="spacer"></div>
+  <div class="sub" id="updated" style="display:none"></div>
+  <div class="hactions">
+  <button id="syncStatus" onclick="showCloudSettings()" title="雲端同步設定">☁</button>
+  <button onclick="showUISettings()" title="介面外觀設定">⚙️</button>
+  <div class="menu-wrap">
+    <button onclick="toggleDataMenu(event)" title="匯入／匯出">💾</button>
+    <div id="dataMenu" class="menu" style="display:none" onclick="event.stopPropagation()">
+      <div class="menu-sec">匯出</div>
+      <button class="menu-item" onclick="exportHTML();closeDataMenu()">📦 完整網頁（可攜，最簡單）</button>
+      <button class="menu-item" onclick="exportExcel();closeDataMenu()">📊 Excel 資料表</button>
+      <button class="menu-item" onclick="exportData();closeDataMenu()">🗎 JSON 備份（最完整）</button>
+      <div class="menu-div"></div>
+      <div class="menu-sec">匯入</div>
+      <button class="menu-item" onclick="document.getElementById('importExcel').click();closeDataMenu()">📥 Excel 資料表</button>
+      <button class="menu-item" onclick="document.getElementById('importFile').click();closeDataMenu()">📂 JSON 備份</button>
+      <div class="menu-div"></div>
+      <button class="menu-item" onclick="showCloudSettings();closeDataMenu()">☁️ 雲端同步設定（GitHub）</button>
+      <div class="menu-div"></div>
+      <button class="menu-item" style="color:var(--warn)" onclick="resetData();closeDataMenu()">↺ 重置為範例資料</button>
+    </div>
+  </div>
+  </div>
+  <input type="file" id="importExcel" accept=".xlsx,.xls" style="display:none" onchange="importExcel(event)">
+  <input type="file" id="importFile" accept="application/json" style="display:none" onchange="importData(event)">
+</header>
+
+<nav>
+  <div class="tab active" data-tab="roadmap" onclick="switchTab('roadmap')">🗺️ Roadmap</div>
+  <div class="tab" data-tab="overview" onclick="switchTab('overview')">📊 總覽</div>
+  <div class="tab" data-tab="projects" onclick="switchTab('projects')">🚗 專案進度</div>
+  <div class="tab" data-tab="modules" onclick="switchTab('modules')">🧩 技術模塊</div>
+  <div class="tab" data-tab="members" onclick="switchTab('members')">👥 團隊成員</div>
+  <div class="tab" data-tab="matching" onclick="switchTab('matching')">🎯 智能配對</div>
+  <div class="tab" data-tab="group" onclick="switchTab('group')" style="margin-left:auto;opacity:.85">🏢 集團總覽</div>
+</nav>
+</div>
+
+<main id="view"></main>
+
+<div class="modal-bg" id="modalBg"><div class="modal" id="modalBox"></div></div>
+
+<button onclick="showAbout()" title="服務資訊 / 維護者" style="position:fixed;right:24px;bottom:24px;width:48px;height:48px;border-radius:50%;border:1px solid rgba(255,255,255,.5);background:rgba(31,78,150,.55);-webkit-backdrop-filter:saturate(180%) blur(14px);backdrop-filter:saturate(180%) blur(14px);color:#fff;font-family:Georgia,'Times New Roman',serif;font-style:italic;font-weight:700;font-size:24px;cursor:pointer;line-height:1;box-shadow:0 8px 24px rgba(20,40,80,.3);z-index:900;display:flex;align-items:center;justify-content:center;transition:transform .18s">i</button>
+
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<script>
+/* ============================================================
+   資料模型
+   - projects: 專案（對應圖一 FIDM 新線進度）
+   - modules : 技術模塊（對應圖二 新技術進度）
+   - members : 團隊成員（專長 + 由指派自動算 loading）
+   關聯：project.moduleIds / project.memberIds ；module.ownerIds ；member.skillModuleIds
+   Loading = 負責專案數 + 負責模塊開發數（依需求自動計算）
+   ============================================================ */
+const STORE_KEY = 'managerPlatformData_v1';
+
+const DEFAULT_DATA = {
+  meta:{ updated:'2026-06-14', version:'v3.0', schemaVersion:3, title:'部門指揮中心', setup:false }, // v3.0：多部門化，每部門 link 自己的私有 data repo；department 區塊隨資料走，為未來集團總覽鋪路
+  // department：本份資料屬於哪個部門的自我描述（未來集團總覽彙整多份 data.json 時靠它識別）
+  department:{ id:'', name:'', code:'', color:'#2f6fd0', manager:'', email:'' },
+  groups:[
+    {id:'XM', name:'XM S19', color:'#8aa6c8'},
+    {id:'MX', name:'MX A02', color:'#c9b85a'},
+    {id:'GM', name:'GM E21', color:'#b39ddb'}
+  ],
+  projects:[
+    {id:'p1', name:'S19 SGM 1# / IM 21.5', group:'XM', customer:'SGM', phase:'改機完成，投產中', progress:100, eta:'Ready', status:'正常', needs:['Pin檢測','Gap','尺寸'], moduleIds:['m3','m7'], memberIds:['u2'], headcount:0, benefit:1200, gains:'省2人, TT↓20%'},
+    {id:'p2', name:'S19 Daimler#', group:'XM', customer:'Daimler', phase:'設備已 Ready，投產中', progress:90, eta:'2026/04/30', status:'正常', needs:['Pin檢測','外觀'], moduleIds:['m3','m4'], memberIds:['u2'], headcount:0, benefit:900, gains:'Cost↓15%'},
+    {id:'p3', name:'S19 BMW 1#', group:'XM', customer:'BMW', phase:'異形版排 Q 上線，TT↓43%', progress:100, eta:'2026/04/30', status:'正常', needs:['3D量測','曲面'], moduleIds:['m1','m9'], memberIds:['u1'], headcount:0, benefit:1500, gains:'TT↓43%, 省1人', stations:[
+      {id:'st1', name:'ST1 上料/3D量測', progress:100, eta:'2026/03/15', moduleIds:['m1','m7'], ownerIds:['u1']},
+      {id:'st2', name:'ST2 Symbol/外觀', progress:100, eta:'2026/04/01', moduleIds:['m4'], ownerIds:['u5']},
+      {id:'st3', name:'ST3 AIF 2D+3D', progress:90, eta:'2026/04/20', moduleIds:['m9'], ownerIds:['u1']},
+      {id:'st4', name:'ST4 EOL 綜合', progress:80, eta:'2026/04/30', moduleIds:['m3','m4'], ownerIds:['u2']}
+    ]},
+    {id:'p4', name:'S19 BMW 3#', group:'XM', customer:'BMW', phase:'設備流程 Pilot-run，驗機完成', progress:80, eta:'2026/06/31', status:'正常', needs:['3D量測','Symbol'], moduleIds:['m1','m4'], memberIds:['u5'], headcount:0, benefit:800, gains:'省1人'},
+    {id:'p5', name:'A02 Tier2 PBI (Ford)#', group:'MX', customer:'Ford', phase:'已完成 pre-acceptance', progress:80, eta:'2026/08/31', status:'正常', needs:['AIF','外觀'], moduleIds:['m9'], memberIds:['u1'], headcount:0, benefit:1000, gains:'Cost↓10%'},
+    {id:'p6', name:'A02 Tier2 Aging (Ford)#', group:'MX', customer:'Ford', phase:'設備 Pilot-run 測試中', progress:60, eta:'2026/08/31', status:'正常', needs:['Gauge','尺寸'], moduleIds:['m5'], memberIds:['u3'], headcount:0, benefit:600, gains:'省1人'},
+    {id:'p7', name:'A02 Tier2 EOL (Ford)#', group:'MX', customer:'Ford', phase:'設備 PLC 測試中', progress:50, eta:'2026/08/31', status:'正常', needs:['Symbol','外觀'], moduleIds:['m4'], memberIds:['u5'], headcount:0, benefit:500, gains:'Cost↓8%'},
+    {id:'p8', name:'A02 Tier1 EOL (STL)#', group:'MX', customer:'STL', phase:'設備 PLC 測試中', progress:50, eta:'2026/08/31', status:'正常', needs:['Pin檢測','外觀'], moduleIds:['m3'], memberIds:[], headcount:0, benefit:500, gains:'Cost↓8%'},
+    {id:'p9', name:'A02 Tier1 P768 (Ford)#', group:'MX', customer:'Ford', phase:'新線評估中（FD2+Aging+EOL）', progress:10, eta:'-', status:'New', needs:['Gauge','HUD','影像殘留'], moduleIds:['m5','m10'], memberIds:['u4'], headcount:0, benefit:300, gains:'潛在 Cost↓'},
+    {id:'p10', name:'E21 Tier1 MMA (MB)#', group:'GM', customer:'MB', phase:'新線評估中（EOL）', progress:10, eta:'-', status:'New', needs:['Knob','HUD'], moduleIds:['m6','m10'], memberIds:[], headcount:0, benefit:400, gains:'潛在營收'}
+  ],
+  modules:[
+    {id:'m1', name:'3D量測平台', category:'3D量檢測', progress:70, phase:'2nd版 6/E 完成 Lab 測試', eta:'2026/06/31', status:'正常', caps:['3D量測','曲面','尺寸'], ownerIds:['u1']},
+    {id:'m2', name:'Angle Test', category:'3D量檢測', progress:100, phase:'曲面演算法申請專利', eta:'Ready', status:'正常', caps:['角度','曲面','光學'], ownerIds:['u3']},
+    {id:'m3', name:'Pin Check', category:'FIDM量檢測', progress:100, phase:'S19 2條線量產，AUSK 平展', eta:'2026/06/31', status:'正常', caps:['Pin檢測','FIDM','外觀'], ownerIds:['u2']},
+    {id:'m4', name:'Symbol Test', category:'FIDM量檢測', progress:80, phase:'軟體完成，與 PAT 壓力測試中', eta:'2026/04/30', status:'正常', caps:['Symbol','外觀','字符'], ownerIds:['u5']},
+    {id:'m5', name:'自動化 Gauge', category:'3D量檢測', progress:90, phase:'M01 P736 新線評估', eta:'2026/03/31', status:'正常', caps:['Gauge','尺寸','自動化'], ownerIds:['u3']},
+    {id:'m6', name:'Knob Test', category:'FIDM量檢測', progress:30, phase:'MMC 檢測光機設計', eta:'2026/06/31', status:'New', caps:['Knob','旋鈕','光機'], ownerIds:['u4']},
+    {id:'m7', name:'Gap / Step', category:'3D量檢測', progress:100, phase:'S19 XNF 已上線', eta:'2026/05/13', status:'正常', caps:['Gap','段差','3D量測'], ownerIds:['u1']},
+    {id:'m8', name:'Image Sticking', category:'FIDM量檢測', progress:30, phase:'完成演算法，需求確認後整合', eta:'待需求整合', status:'New', caps:['影像殘留','顯示品質'], ownerIds:['u4']},
+    {id:'m9', name:'AIF 2D+3D', category:'3D量檢測', progress:70, phase:'W2624 M01 PoC', eta:'2026/05/31', status:'正常', caps:['AIF','2D','3D量測','外觀'], ownerIds:['u1']},
+    {id:'m10', name:'HUD Test', category:'FIDM量檢測', progress:30, phase:'完成測項蒐集，評估量產檢測', eta:'待需求整合', status:'New', caps:['HUD','光學','顯示品質'], ownerIds:['u4']}
+  ],
+  moduleCats:[
+    {id:'mc1', name:'3D量檢測', color:'#2f6fd0'},
+    {id:'mc2', name:'FIDM量檢測', color:'#c9852a'}
+  ],
+  teams:[
+    {id:'t1', name:'3D量檢團隊', color:'#2f6fd0'},
+    {id:'t2', name:'FIDM量檢團隊', color:'#c9852a'}
+  ],
+  members:[
+    {id:'u1', name:'（範例）陳工', title:'工程師', teamId:'t1', skillModuleIds:['m1','m7','m9'], capacity:4},
+    {id:'u2', name:'（範例）林工', title:'工程師', teamId:'t2', skillModuleIds:['m3','m4'], capacity:4},
+    {id:'u3', name:'（範例）王工', title:'工程師', teamId:'t1', skillModuleIds:['m2','m5'], capacity:4},
+    {id:'u4', name:'（範例）李工', title:'工程師', teamId:'t2', skillModuleIds:['m6','m8','m10'], capacity:4},
+    {id:'u5', name:'（範例）張工', title:'工程師', teamId:'t1', skillModuleIds:['m1','m4','m9'], capacity:4}
+  ],
+  // Roadmap：三年計畫主架構。每個項目連結到對應的專案(projectIds)與技術模塊(moduleIds)
+  pillars:[
+    {id:'pl1', domain:'Mobility', name:'3D 量檢平台'},
+    {id:'pl2', domain:'Mobility', name:'車用顯像平台'},
+    {id:'pl3', domain:'Mobility', name:'全球插線'},
+    {id:'pl4', domain:'Display', name:'uLED'},
+    {id:'pl5', domain:'Display', name:'低軌衛星'}
+  ],
+  roadmapItems:[
+    {id:'r1', pillar:'pl1', year:'2026', title:'快速部署 RoboDK + AOI影測算 + AI', moduleIds:['m1','m9'], projectIds:['p3']},
+    {id:'r2', pillar:'pl1', year:'2026', title:'Auto Gauge (Ford U710/P736)', moduleIds:['m5'], projectIds:['p6']},
+    {id:'r3', pillar:'pl1', year:'2027', title:'AIF 2.0 + LVM + Sam2／空間視覺適應規劃', moduleIds:['m9'], projectIds:[]},
+    {id:'r4', pillar:'pl1', year:'2028', title:'曲面幾何形貌建模／2.5D 光膠立體建模', moduleIds:['m1','m2'], projectIds:[]},
+    {id:'r5', pillar:'pl2', year:'2026', title:'Gap Meas. & Pin Check／Symbol Test', moduleIds:['m7','m3','m4'], projectIds:['p1','p2']},
+    {id:'r6', pillar:'pl2', year:'2027', title:'BUC／Knob Test／Privacy Panel', moduleIds:['m6'], projectIds:[]},
+    {id:'r7', pillar:'pl2', year:'2028', title:'AR/P HUD (BMW X9.x)／CMS Test', moduleIds:['m10'], projectIds:['p10']},
+    {id:'r8', pillar:'pl3', year:'2026', title:'A02 Ford 12.2 / STL 14.46', moduleIds:[], projectIds:['p5','p6','p7','p8']},
+    {id:'r9', pillar:'pl3', year:'2027', title:'E21 MB MMA', moduleIds:['m10'], projectIds:['p10']},
+    {id:'r10', pillar:'pl3', year:'2028', title:'A02 Ford F-250/350', moduleIds:[], projectIds:['p9']},
+    {id:'r11', pillar:'pl4', year:'2026', title:'AI 模型蒸餾／高速觸發訊號轉換', moduleIds:[], projectIds:[]},
+    {id:'r12', pillar:'pl4', year:'2027', title:'次像素演算法／高速擷量測', moduleIds:[], projectIds:[]},
+    {id:'r13', pillar:'pl4', year:'2028', title:'非觸控 3D 量測／大面積 Mura 量測', moduleIds:[], projectIds:[]},
+    {id:'r14', pillar:'pl5', year:'2026', title:'透明導電膜量檢測', moduleIds:[], projectIds:[]},
+    {id:'r15', pillar:'pl5', year:'2027', title:'低判比導線線路檢測／曲面車窗天線檢測', moduleIds:[], projectIds:[]},
+    {id:'r16', pillar:'pl5', year:'2028', title:'透明基板線路/邊緣量測／非觸式表面阻值量測', moduleIds:[], projectIds:[]}
+  ],
+  domainColors:{Display:'#7e57c2', Mobility:'#2f6fd0', Vertical:'#e0853a'},
+  roleWorkload:{ 'PM':30, '光學':30, '機構':30, '電控':30, '平台':30, '演算法':30, 'FAE':15, '站點':20 }
+};
+const ROADMAP_YEARS = ['2026','2027','2028'];
+const ROADMAP_DOMAINS = ['Display','Mobility','Vertical']; // Pillar 領域固定三種
+const DOMAIN_COLORS = {Display:'#7e57c2', Mobility:'#2f6fd0', Vertical:'#e0853a'};
+function domainColor(d){ return (DATA.domainColors&&DATA.domainColors[d]) || DOMAIN_COLORS[d] || '#2f6fd0'; }
+function setDomainColor(d,c){ if(!DATA.domainColors) DATA.domainColors={}; DATA.domainColors[d]=c; save(); render(); }
+
+let DATA = load();
+function load(){ let d; try{
+    const s=localStorage.getItem(STORE_KEY);
+    if(s){ d=JSON.parse(s); }
+    else { const seed=document.getElementById('seedData'); const txt=seed&&seed.textContent.trim(); d= txt?JSON.parse(txt):JSON.parse(JSON.stringify(DEFAULT_DATA)); } // 可攜網頁：localStorage 為空時改讀內嵌資料
+  }catch(e){ d = JSON.parse(JSON.stringify(DEFAULT_DATA)); } return migrate(d); }
+function migrate(d){ // 相容舊資料：補上新欄位
+  (d.projects||[]).forEach(p=>{ if(p.benefit==null)p.benefit=0; if(p.gains==null)p.gains=''; if(p.headcount==null)p.headcount=0; if(!Array.isArray(p.stations))p.stations=[]; (p.stations||[]).forEach(st=>{ if(!Array.isArray(st.moduleIds))st.moduleIds=[]; if(!Array.isArray(st.ownerIds))st.ownerIds=[]; if(st.progress==null)st.progress=0; if(typeof st.roleMembers!=='object'||!st.roleMembers)st.roleMembers={}; if(!Array.isArray(st.roles))st.roles=Object.keys(st.roleMembers); }); });
+  if(!d.pillars) d.pillars = JSON.parse(JSON.stringify(DEFAULT_DATA.pillars));
+  if(!d.roadmapItems) d.roadmapItems = JSON.parse(JSON.stringify(DEFAULT_DATA.roadmapItems));
+  if(!d.teams) d.teams = JSON.parse(JSON.stringify(DEFAULT_DATA.teams));
+  if(!d.moduleCats){ // 從既有模塊的 category 字串建立可編輯的分類實體
+    const seen={}; d.moduleCats=[];
+    (d.modules||[]).forEach(m=>{ const c=(m.category||'未分類').trim(); if(c&&!seen[c]){ seen[c]=1; d.moduleCats.push({id:uid('mc'), name:c, color: c.includes('FIDM')?'#c9852a':'#2f6fd0'}); } });
+    if(!d.moduleCats.length) d.moduleCats=JSON.parse(JSON.stringify(DEFAULT_DATA.moduleCats));
+  }
+  (d.groups||[]).forEach(gr=>{ if(!gr.color) gr.color='#5b8def'; });
+  (d.members||[]).forEach(u=>{ if(u.teamId==null) u.teamId=''; });
+  if(!d.domainColors) d.domainColors = JSON.parse(JSON.stringify(DEFAULT_DATA.domainColors));
+  if(!d.roleWorkload) d.roleWorkload = JSON.parse(JSON.stringify(DEFAULT_DATA.roleWorkload));
+  // 合併「負責人」「專案」→ PM：把舊資料的角色指派與工時權重收斂到單一 PM 概念
+  if(d.roleWorkload['PM']==null) d.roleWorkload['PM'] = (d.roleWorkload['專案']!=null ? d.roleWorkload['專案'] : 30);
+  delete d.roleWorkload['負責人']; delete d.roleWorkload['專案'];
+  (d.projects||[]).forEach(p=>{ const rm=p.roleMembers||{}; if(rm['專案']&&rm['專案'].length) p.memberIds=[...new Set([...(p.memberIds||[]),...rm['專案']])]; if(rm['專案']) delete rm['專案']; });
+  (d.modules||[]).forEach(m=>{ const rm=m.roleMembers||{}; if(rm['專案']&&rm['專案'].length) m.ownerIds=[...new Set([...(m.ownerIds||[]),...rm['專案']])]; if(rm['專案']) delete rm['專案']; });
+  (d.members||[]).forEach(u=>{ if(Array.isArray(u.skillRoles)) u.skillRoles=u.skillRoles.filter(r=>r!=='專案'); });
+  Object.keys(DEFAULT_DATA.roleWorkload).forEach(r=>{ if(d.roleWorkload[r]==null) d.roleWorkload[r]=DEFAULT_DATA.roleWorkload[r]; }); // 補上新增的角色
+  (d.members||[]).forEach(u=>{ if(u.capPct==null) u.capPct=100; if(!Array.isArray(u.skillRoles)) u.skillRoles=[]; });
+  (d.projects||[]).forEach(p=>{ if(p.weight==null) p.weight=1; });
+  (d.modules||[]).forEach(m=>{ if(m.weight==null) m.weight=1; });
+  if(!d.meta) d.meta={updated:DEFAULT_DATA.meta.updated}; d.meta.version=DEFAULT_DATA.meta.version;
+  if(!d.meta.title) d.meta.title='部門指揮中心';
+  if(d.meta.schemaVersion==null) d.meta.schemaVersion=DEFAULT_DATA.meta.schemaVersion;
+  if(!d.department) d.department=JSON.parse(JSON.stringify(DEFAULT_DATA.department));
+  // setup 旗標：判斷此份資料是否已完成部門設定（有部門名稱即視為已設定，相容舊資料）
+  if(d.meta.setup==null) d.meta.setup = !!(d.department && d.department.name);
+  return d;
+}
+function save(){ DATA.meta.updated = new Date().toISOString().slice(0,10); localStorage.setItem(STORE_KEY, JSON.stringify(DATA)); document.getElementById('updated').textContent='更新：'+DATA.meta.updated; cloudPush(); }
+function uid(p){ return p+Date.now().toString(36)+Math.floor(Math.random()*1000); }
+
+/* ============ GitHub 雲端同步 ============ */
+const GH_KEY='managerPlatformGH_v1';
+let GH = loadGH();      // {owner,repo,branch,path,token,enabled}
+let GH_SHA = null; let GH_PUSH_TIMER=null;
+function loadGH(){ try{ return JSON.parse(localStorage.getItem(GH_KEY))||{}; }catch(e){ return {}; } }
+function saveGH(){ localStorage.setItem(GH_KEY, JSON.stringify(GH)); }
+function ghReady(){ return !!(GH && GH.enabled && GH.owner && GH.repo && GH.path && GH.token); }
+function ghHeaders(){ const h={ 'Accept':'application/vnd.github+json' }; if(GH.token) h['Authorization']='Bearer '+GH.token; return h; }
+function ghApiUrl(){ return `https://api.github.com/repos/${GH.owner}/${GH.repo}/contents/${GH.path}?ref=${GH.branch||'main'}`; }
+function b64encode(str){ return btoa(unescape(encodeURIComponent(str))); }
+function b64decode(b64){ return decodeURIComponent(escape(atob((b64||'').replace(/\n/g,'')))); }
+function setSyncStatus(state,msg){ const el=document.getElementById('syncStatus'); if(!el) return; const map={off:['#e3ebf7','☁','雲端未連線'],ok:['#9af0bc','☁','雲端已同步'],sync:['#ffe0a0','⟳','同步中…'],err:['#ffb0a0','⚠','同步失敗']}; const a=map[state]||map.off; el.style.color=a[0]; el.textContent=a[1]; el.title=msg||a[2]; }
+async function cloudPull(opts){ opts=opts||{}; if(!ghReady()){ setSyncStatus('off'); return; } setSyncStatus('sync','⟳ 讀取雲端…'); try{ const res=await fetch(ghApiUrl(),{headers:ghHeaders(),cache:'no-store'}); if(res.status===404){ setSyncStatus('ok','☁ 雲端尚無資料（儲存時將自動建立）'); GH_SHA=null; return; } if(!res.ok) throw new Error('HTTP '+res.status); const j=await res.json(); GH_SHA=j.sha; const remote=migrate(JSON.parse(b64decode(j.content))); const rT=(remote.meta&&remote.meta.updated)||''; const lT=(DATA.meta&&DATA.meta.updated)||''; if(opts.force || rT>=lT){ DATA=remote; localStorage.setItem(STORE_KEY, JSON.stringify(DATA)); render(); renderTitle(); document.getElementById('updated').textContent='更新：'+(DATA.meta.updated||''); } setSyncStatus('ok','☁ 已同步（雲端 '+rT+'）'); }catch(e){ setSyncStatus('err','⚠ 讀取失敗：'+e.message); } }
+function cloudPush(){ if(!ghReady()) return; clearTimeout(GH_PUSH_TIMER); GH_PUSH_TIMER=setTimeout(cloudPushNow,1200); }
+async function cloudPushNow(){ if(!ghReady()) return; setSyncStatus('sync','⟳ 上傳雲端…'); try{ const body={ message:'update data '+new Date().toISOString(), content:b64encode(JSON.stringify(DATA,null,2)), branch:GH.branch||'main' }; if(GH_SHA) body.sha=GH_SHA; const url=`https://api.github.com/repos/${GH.owner}/${GH.repo}/contents/${GH.path}`; const res=await fetch(url,{method:'PUT',headers:Object.assign({'Content-Type':'application/json'},ghHeaders()),body:JSON.stringify(body)}); if(res.status===409){ await cloudPull({force:true}); throw new Error('版本衝突，已重新拉取雲端最新資料，請重做剛才的修改'); } if(!res.ok){ const t=await res.text(); throw new Error('HTTP '+res.status+' '+t.slice(0,80)); } const j=await res.json(); GH_SHA=j.content&&j.content.sha; setSyncStatus('ok','☁ 已同步'); }catch(e){ setSyncStatus('err','⚠ 上傳失敗：'+e.message); } }
+function showCloudSettings(){
+  const g=GH||{};
+  openModal(`<h3>☁️ 雲端同步設定（GitHub）</h3>
+    <div class="field"><label>GitHub 帳號 / 組織（owner）</label><input id="gh_owner" value="${esc(g.owner||'')}" placeholder="例：johnny-auo"></div>
+    <div class="field"><label>儲存庫名稱（repo）</label><input id="gh_repo" value="${esc(g.repo||'')}" placeholder="例：manager-platform-data"></div>
+    <div class="row">
+      <div class="field" style="flex:1"><label>分支（branch）</label><input id="gh_branch" value="${esc(g.branch||'main')}" placeholder="main"></div>
+      <div class="field" style="flex:1.4"><label>資料檔路徑（path）</label><input id="gh_path" value="${esc(g.path||'data.json')}" placeholder="data.json"></div>
+    </div>
+    <div class="field"><label>存取權杖（Personal Access Token）</label><input id="gh_token" type="password" value="${esc(g.token||'')}" placeholder="ghp_… 或 github_pat_…"><div class="hint">需具備該 repo 的 Contents 讀寫權限。權杖只存在本機瀏覽器，不會寫進 HTML。</div></div>
+    <div class="field"><label style="display:flex;align-items:flex-start;gap:8px;line-height:1.4"><input id="gh_enabled" type="checkbox" ${g.enabled?'checked':''} style="width:auto;flex:0 0 auto;margin-top:2px"> <span>啟用雲端同步（開啟後儲存自動上傳、開啟自動讀取）</span></label></div>
+    <div id="gh_testmsg" class="hint" style="min-height:18px"></div>
+    <div class="hint" style="background:#fff7e6;border:1px solid #ffe0a3;padding:8px 10px;border-radius:8px;color:#8a5a00">⚠ 資安提醒：資料將離開公司內部，存到 GitHub。請先確認符合 AUO 資訊安全規範。建議使用 <b>private（私有）</b> repo。</div>
+    <div class="modal-foot" style="flex-wrap:wrap;justify-content:flex-start">
+      <button class="btn ghost" onclick="testCloud()">🔌 測試連線</button>
+      <button class="btn ghost" onclick="cloudPull({force:true})">⬇ 從雲端讀取</button>
+      <button class="btn ghost" onclick="cloudPushNow()">⬆ 上傳到雲端</button>
+      <button class="btn" onclick="saveCloudSettings()">儲存設定</button>
+    </div>`);
+}
+function saveCloudSettings(){ GH={ owner:val('gh_owner').trim(), repo:val('gh_repo').trim(), branch:val('gh_branch').trim()||'main', path:val('gh_path').trim()||'data.json', token:document.getElementById('gh_token').value.trim(), enabled:document.getElementById('gh_enabled').checked }; saveGH(); closeModal(); GH_SHA=null; if(ghReady()) cloudPull({force:false}); else setSyncStatus('off'); }
+async function testCloud(){ const el=document.getElementById('gh_testmsg'); if(!el) return; const owner=val('gh_owner').trim(), repo=val('gh_repo').trim(), branch=val('gh_branch').trim()||'main', path=val('gh_path').trim()||'data.json', token=document.getElementById('gh_token').value.trim(); if(!owner||!repo||!token){ el.style.color='#e0563f'; el.textContent='⚠ 請先填寫 owner / repo / token'; return; } el.style.color='#e6a23c'; el.textContent='⟳ 測試中…'; try{ const url=`https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`; const res=await fetch(url,{headers:{'Accept':'application/vnd.github+json','Authorization':'Bearer '+token},cache:'no-store'}); if(res.status===200){ el.style.color='#2e9e5b'; el.textContent='✅ 連線成功，已找到資料檔，可正常同步。'; } else if(res.status===404){ el.style.color='#2e9e5b'; el.textContent='✅ 連線成功（repo 可存取，資料檔尚未建立，首次上傳會自動建立）。'; } else if(res.status===401){ el.style.color='#e0563f'; el.textContent='⚠ 401：權杖無效或已過期。'; } else if(res.status===403){ el.style.color='#e0563f'; el.textContent='⚠ 403：權限不足或被限制（請確認權杖具 Contents 權限）。'; } else { el.style.color='#e0563f'; el.textContent='⚠ HTTP '+res.status; } }catch(e){ el.style.color='#e0563f'; el.textContent='⚠ 連線失敗：'+e.message; } }
+
+/* ---------- 刪除復原（undo）---------- */
+let UNDO=null, UNDO_TIMER=null;
+function snapshotUndo(label){ UNDO={ snap:JSON.parse(JSON.stringify(DATA)), label:label||'刪除' }; }
+function undoDelete(){ if(!UNDO) return; DATA=JSON.parse(JSON.stringify(UNDO.snap)); UNDO=null; clearTimeout(UNDO_TIMER); hideToast(); save(); render(); }
+function showUndoToast(label){
+  let t=document.getElementById('undoToast');
+  if(!t){ t=document.createElement('div'); t.id='undoToast';
+    t.style.cssText='position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:#222;color:#fff;padding:11px 16px;border-radius:10px;box-shadow:0 6px 20px rgba(0,0,0,.3);display:flex;align-items:center;gap:14px;z-index:9999;font-size:14px';
+    document.body.appendChild(t); }
+  t.innerHTML=`<span>已刪除「${label}」</span><button class="btn sm" style="background:#fff;color:#222;font-weight:700" onclick="undoDelete()">↩️ 復原</button>`;
+  t.style.display='flex';
+  clearTimeout(UNDO_TIMER); UNDO_TIMER=setTimeout(hideToast,8000);
+}
+function hideToast(){ const t=document.getElementById('undoToast'); if(t) t.style.display='none'; }
+
+/* ---------- helpers ---------- */
+const g = id => DATA.groups.find(x=>x.id===id)||{name:id,color:'#999'};
+const proj = id => DATA.projects.find(x=>x.id===id);
+const mod = id => DATA.modules.find(x=>x.id===id);
+const mem = id => DATA.members.find(x=>x.id===id);
+const pil = id => (DATA.pillars||[]).find(x=>x.id===id)||{name:id,domain:''};
+const catColor = name => { const c=(DATA.moduleCats||[]).find(x=>x.name===name); return c?c.color:(String(name).includes('FIDM')?'#c9852a':'#2f6fd0'); };
+// 專案/模塊的功能別成員角色（PM 為第一順位角色，PM=專案負責人）
+const FUNC_ROLES = ['光學','機構','電控','平台','演算法','FAE'];
+const ALL_ROLES = ['PM', ...FUNC_ROLES, '站點'];
+// 取得專案的全部相關成員（PM + 各功能別成員，去重）
+function projAllMemberIds(p){ const s=new Set(p.memberIds||[]); const rm=p.roleMembers||{}; Object.keys(rm).forEach(k=>(rm[k]||[]).forEach(id=>s.add(id))); (p.stations||[]).forEach(st=>{ (st.ownerIds||[]).forEach(id=>s.add(id)); const srm=st.roleMembers||{}; Object.keys(srm).forEach(k=>(srm[k]||[]).forEach(id=>s.add(id))); }); return [...s]; }
+// 線進度：有站點時＝各站平均，否則用專案自身進度
+function projProgress(p){ const st=p.stations||[]; if(st.length) return Math.round(st.reduce((a,s)=>a+(+s.progress||0),0)/st.length); return +p.progress||0; }
+// 線效益：有站點時＝各站效益加總，否則用專案自身效益
+function projBenefit(p){ const st=p.stations||[]; if(st.length) return st.reduce((a,s)=>a+(+s.benefit||0),0); return +p.benefit||0; }
+// 線技術模塊：有站點時＝各站模塊聯集，否則用專案自身模塊
+function projModuleIds(p){ const st=p.stations||[]; if(st.length){ const s=new Set(); st.forEach(x=>(x.moduleIds||[]).forEach(id=>s.add(id))); return [...s]; } return p.moduleIds||[]; }
+// 單一站點：相關成員、個人工時%、等效人力
+function stationMemberIds(st){ const s=new Set(st.ownerIds||[]); const srm=st.roleMembers||{}; Object.keys(srm).forEach(k=>(srm[k]||[]).forEach(id=>s.add(id))); return [...s]; }
+function personStationPct(uId, st){ let pct=0; if((st.ownerIds||[]).includes(uId)) pct+=rolePct('站點'); const srm=st.roleMembers||{}; FUNC_ROLES.forEach(r=>{ if((srm[r]||[]).includes(uId)) pct+=rolePct(r); }); return pct; }
+function stationHeadcount(st){ let s=0; stationMemberIds(st).forEach(id=>s+=personStationPct(id,st)); return Math.round(s/100*10)/10; }
+function modAllMemberIds(m){ const s=new Set(m.ownerIds||[]); const rm=m.roleMembers||{}; Object.keys(rm).forEach(k=>(rm[k]||[]).forEach(id=>s.add(id))); return [...s]; }
+// 角色基準工時%（使用者自行設定）
+function rolePct(role){ const w=DATA.roleWorkload||{}; return +w[role]||0; }
+// 某人在某專案/模塊扮演角色的工時%（身兼多角色則累加，使 Loading 反映真實負擔）
+function personProjPct(uId, p){ let pct=0; if((p.memberIds||[]).includes(uId)) pct+=rolePct('PM'); const rm=p.roleMembers||{}; FUNC_ROLES.forEach(r=>{ if((rm[r]||[]).includes(uId)) pct+=rolePct(r); }); (p.stations||[]).forEach(st=>{ pct+=personStationPct(uId,st); }); return pct; }
+function personModPct(uId, m){ let pct=0; if((m.ownerIds||[]).includes(uId)) pct+=rolePct('PM'); const rm=m.roleMembers||{}; FUNC_ROLES.forEach(r=>{ if((rm[r]||[]).includes(uId)) pct+=rolePct(r); }); return pct; }
+// 個人 Loading = Σ(角色基準工時% × 重要性權重)，單位為%
+function memberLoad(uId){
+  let projN=0, modN=0, total=0;
+  DATA.projects.forEach(p=>{ const pct=personProjPct(uId,p); if(pct>0){ projN++; total += pct*(+p.weight||1); } });
+  DATA.modules.forEach(m=>{ const pct=personModPct(uId,m); if(pct>0){ modN++; total += pct*(+m.weight||1); } });
+  return {projN, modN, total:Math.round(total)};
+}
+// 等效人力(FTE)：依各成員角色工時%加總 ÷100，反映真實投入人力（不乘重要性權重）
+function projFTE(p){ let s=0; projAllMemberIds(p).forEach(uId=>{ s += personProjPct(uId,p); }); return s/100; }
+// 投入人數：一律用等效人力(FTE)，四捨五入到小數1位
+function projHeadcount(p){ return Math.round(projFTE(p)*10)/10; }
+// 部門人均產出效益 = 總效益 ÷ 總投入人數（只計有投入人力的專案）
+function deptEfficiency(){
+  let benefit=0, heads=0;
+  DATA.projects.forEach(p=>{ const h=projHeadcount(p); if(h>0){ benefit+=projBenefit(p); heads+=h; } });
+  return { benefit, heads, perHead: heads? Math.round(benefit/heads) : 0 };
+}
+// 依維度計算人均效益。dim:'group'=各廠區 / 'cat'=各技術模塊分類
+function efficiencyBy(dim){
+  if(dim==='group'){
+    return DATA.groups.map(gr=>{
+      let benefit=0, heads=0;
+      DATA.projects.filter(p=>p.group===gr.id).forEach(p=>{ const h=projHeadcount(p); if(h>0){ benefit+=projBenefit(p); heads+=h; } });
+      return { label:gr.name, color:gr.color, benefit, heads, perHead: heads?Math.round(benefit/heads):0 };
+    }).filter(x=>x.heads>0);
+  }
+  // 依技術模塊分類：彙總「使用到該分類模塊」的專案效益（專案跨分類會分別計入）
+  const cats=[...new Set(DATA.modules.map(m=>m.category))];
+  return cats.map(c=>{
+    const modIds=DATA.modules.filter(m=>m.category===c).map(m=>m.id);
+    let benefit=0, heads=0;
+    DATA.projects.filter(p=>projModuleIds(p).some(id=>modIds.includes(id))).forEach(p=>{ const h=projHeadcount(p); if(h>0){ benefit+=projBenefit(p); heads+=h; } });
+    return { label:c, color:catColor(c), benefit, heads, perHead: heads?Math.round(benefit/heads):0 };
+  }).filter(x=>x.heads>0);
+}
+let EFF_DIM='group';
+function setEffDim(d){ EFF_DIM=d; const el=document.getElementById('effPanel'); if(el) el.innerHTML=effPanelInner(); }
+function effPanelInner(){
+  const dims=[['group','依廠區'],['cat','依技術模塊']];
+  const arr=efficiencyBy(EFF_DIM);
+  const max=Math.max(1,...arr.map(s=>s.perHead));
+  const tabs=`<div style="display:flex;gap:6px;margin-bottom:10px">
+    ${dims.map(([k,l])=>`<button onclick="setEffDim('${k}')" style="flex:1;cursor:pointer;font-size:12px;font-weight:700;padding:5px 0;border-radius:6px;border:1px solid rgba(255,255,255,.35);background:${EFF_DIM===k?'#fff':'transparent'};color:${EFF_DIM===k?'#1f4e96':'#fff'}">${l}</button>`).join('')}</div>`;
+  const rows = arr.length? arr.map(s=>`<div style="margin-bottom:9px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:12px">
+        <span style="opacity:.92"><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${s.color};margin-right:6px;vertical-align:middle"></span>${esc(s.label)}</span>
+        <span><b style="font-size:17px">${s.perHead}</b> <span style="font-size:10px;opacity:.8">萬/年·人</span></span></div>
+      <div style="height:6px;background:rgba(255,255,255,.18);border-radius:4px;overflow:hidden;margin-top:3px"><span style="display:block;height:100%;width:${Math.round(s.perHead/max*100)}%;background:${s.color}"></span></div>
+      <div style="font-size:10px;opacity:.7;margin-top:2px">效益 ${s.benefit} ÷ ${s.heads} 人</div></div>`).join('')
+    : '<div style="font-size:12px;opacity:.7">此維度尚無投入人力的資料</div>';
+  return tabs+rows;
+}
+function statusBadge(s){ if(s==='New') return '<span class="badge new">New</span>'; if(s==='延遲'||s==='Delay') return '<span class="badge warn">延遲</span>'; return '<span class="badge ok">正常</span>'; }
+// 專案狀態自動判定：依 進度% + 預計完成日（今天比較）
+function parseETA(s){ const m=String(s||'').match(/(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})/); if(!m) return null; const d=new Date(+m[1],+m[2]-1,+m[3]); return isNaN(d.getTime())?null:d; }
+// 日曆 <input type=date> 用：YYYY/MM/DD ↔ YYYY-MM-DD（無效或非日期字串回空）
+function toDateInput(s){ const m=String(s||'').match(/(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})/); if(!m) return ''; const y=+m[1],mo=+m[2],d=+m[3]; const dt=new Date(y,mo-1,d); if(dt.getFullYear()!==y||dt.getMonth()!==mo-1||dt.getDate()!==d) return ''; return `${y}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}`; }
+function fromDateInput(s){ return String(s||'').replace(/-/g,'/'); }
+function autoStatus(p){
+  const prog=+p.progress||0;
+  if(prog>=100) return {label:'完成', icon:'✅', cls:'ok'};
+  if(prog<=0)  return {label:'規劃中', icon:'🆕', cls:'new'};
+  const eta=parseETA(p.eta);
+  if(eta){ const t=new Date(); t.setHours(0,0,0,0);
+    const days=Math.round((eta-t)/86400000);
+    if(days<0)  return {label:'延遲', icon:'⚠', cls:'warn', note:`逾期 ${-days} 天`};
+    if(days<=30) return {label:'衝刺中', icon:'🔶', cls:'soon', note:`剩 ${days} 天`};
+  }
+  return {label:'進行中', icon:'🔵', cls:'go'};
+}
+function projStatusBadge(p){ const s=autoStatus({progress:projProgress(p), eta:p.eta}); return `<span class="badge ${s.cls}" title="${s.note?esc(s.note):'依進度與預計完成日自動判定'}">${s.icon} ${s.label}</span>`; }
+function esc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+/* ============================================================ TABS ============================================================ */
+let CURRENT='roadmap';
+function switchTab(t){ CURRENT=t; document.querySelectorAll('nav .tab').forEach(e=>e.classList.toggle('active',e.dataset.tab===t)); window.scrollTo(0,0); render(); }
+function render(){ ({roadmap:renderRoadmap,overview:renderOverview,projects:renderProjects,modules:renderModules,members:renderMembers,matching:renderMatching,group:renderGroupView}[CURRENT])(); }
+// 從 Roadmap 點擊連結跳到對應分頁並聚焦
+function gotoProject(id){ switchTab('projects'); setTimeout(()=>highlight('proj-'+id),60); }
+function gotoModule(id){ switchTab('modules'); setTimeout(()=>highlight('mod-'+id),60); }
+function highlight(domId){ const el=document.getElementById(domId); if(el){ el.scrollIntoView({behavior:'smooth',block:'center'}); el.style.boxShadow='0 0 0 3px var(--blue2)'; setTimeout(()=>el.style.boxShadow='',1800); } }
+// 集團總覽（佔位）：未來彙整各部門 data.json（B3：私有 repo + 集團唯讀鏡像）
+function renderGroupView(){
+  const d=DATA.department||{};
+  document.getElementById('view').innerHTML=`
+    <div class="card" style="max-width:720px;margin:8px auto;text-align:center;padding:34px 28px">
+      <div style="font-size:46px;line-height:1;margin-bottom:10px">🏢</div>
+      <h2 style="margin:0 0 6px">集團總覽</h2>
+      <div style="color:var(--muted);margin-bottom:18px">跨部門彙整視角（規劃中）</div>
+      <div style="text-align:left;line-height:1.85;font-size:14px;background:rgba(255,255,255,.45);border:1px solid var(--glass-line);border-radius:var(--r-md);padding:16px 18px">
+        <div style="font-weight:700;margin-bottom:6px">這個分頁未來會做什麼？</div>
+        將自動彙整<b>各部門的指揮中心資料</b>，讓上層一眼看到全公司的專案進度、技術模塊與人力 Loading。
+        <div style="height:10px"></div>
+        <div style="font-weight:700;margin-bottom:6px">運作方式（規劃）</div>
+        每個部門維護自己的<b>私有 data repo</b>（看不到別人、改不到別人）；另同步一份到<b>集團唯讀鏡像</b>，總覽只讀取彙整、不修改。
+        <div style="height:10px"></div>
+        <div style="color:var(--muted)">目前版本：各部門先各自獨立使用。此彙整功能待第一階段穩定後開放。</div>
+      </div>
+      <div style="margin-top:18px;font-size:13px;color:var(--muted)">本機目前部門：<b style="color:var(--blue)">${esc(d.name||'尚未設定')}</b>${d.code?`（${esc(d.code)}）`:''}</div>
+      <div class="modal-foot" style="justify-content:center;margin-top:14px"><button class="btn" onclick="showDeptSetup(false)">⚙️ 設定本部門</button></div>
+    </div>`;
+}
+
+/* ---------- bar chart helper ---------- */
+function barChart(items, color){ // items: [{label,value, color?}]
+  const ticks=[100,80,60,40,20,0];
+  const bars=items.map(it=>{ const v=Math.max(0,Math.min(100,+it.value||0));
+    return `<div class="col"><div class="bar" style="height:${v}%;background:${it.color||color||'var(--xm)'}"><span class="v">${+it.value||0}</span></div></div>`; }).join('');
+  const labs=items.map(it=>`<div class="xl">${esc(it.label)}</div>`).join('');
+  return `<div class="chart">
+    <div class="yax">${ticks.map(t=>`<span>${t}%</span>`).join('')}</div>
+    <div class="plot">
+      <div class="plotarea"><div class="bars">${bars}</div></div>
+      <div class="xlabs">${labs}</div>
+    </div>
+  </div>`;
+}
+
+/* ---------- bubble chart：效益(Y) × 投入人數(X) ---------- */
+function bubbleChart(){
+  const pts=DATA.projects.map(p=>({p,x:projHeadcount(p),y:projBenefit(p)})).filter(d=>d.x>0||d.y>0);
+  if(!pts.length) return '<div class="empty">尚無資料：請在專案填寫「投入人數」與「效益值」。</div>';
+  const W=720,H=380,padL=56,padB=46,padT=20,padR=20;
+  const maxX=Math.max(4,...pts.map(d=>d.x))+1, maxY=Math.max(100,...pts.map(d=>d.y))*1.1;
+  const medX=maxX/2, medY=maxY/2;
+  const sx=v=>padL+(v/maxX)*(W-padL-padR);
+  const sy=v=>H-padB-(v/maxY)*(H-padT-padB);
+  const grid=DATA.groups;
+  const dots=pts.map(d=>{ const c=g(d.p.group).color; const r=8+(projProgress(d.p))/12;
+    return `<circle cx="${sx(d.x)}" cy="${sy(d.y)}" r="${r}" fill="${c}" fill-opacity="0.7" stroke="${c}" style="cursor:pointer" onclick="gotoProject('${d.p.id}')"><title>${esc(d.p.name)}｜${d.x}人｜效益${d.y}｜進度${projProgress(d.p)}%</title></circle>
+      <text x="${sx(d.x)}" y="${sy(d.y)-r-3}" font-size="10" text-anchor="middle" fill="#445">${esc(d.p.name.replace(/\(.*?\)/g,'').slice(0,8))}</text>`;}).join('');
+  return `
+  <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto">
+    <line x1="${sx(medX)}" y1="${padT}" x2="${sx(medX)}" y2="${H-padB}" stroke="#dde4ee" stroke-dasharray="4"/>
+    <line x1="${padL}" y1="${sy(medY)}" x2="${W-padR}" y2="${sy(medY)}" stroke="#dde4ee" stroke-dasharray="4"/>
+    <line x1="${padL}" y1="${padT}" x2="${padL}" y2="${H-padB}" stroke="#99a"/>
+    <line x1="${padL}" y1="${H-padB}" x2="${W-padR}" y2="${H-padB}" stroke="#99a"/>
+    <text x="${padL+8}" y="${padT+14}" font-size="11" fill="#36b37e" font-weight="700">⭐ 少人高效益</text>
+    <text x="${W-padR-8}" y="${H-padB-8}" font-size="11" fill="#e0563f" font-weight="700" text-anchor="end">⚠ 多人低效益</text>
+    <text x="${W/2}" y="${H-10}" font-size="12" text-anchor="middle" fill="#6b7a90">投入人數 →</text>
+    <text x="14" y="${H/2}" font-size="12" text-anchor="middle" fill="#6b7a90" transform="rotate(-90 14 ${H/2})">產出效益（萬元/年）→</text>
+    ${dots}
+  </svg>
+  <div style="margin-top:6px">${grid.map(gr=>`<span class="tag" style="background:${gr.color}33;color:#333">● ${esc(gr.name)}</span>`).join('')}<span style="font-size:11px;color:var(--muted);margin-left:8px">泡泡大小＝專案進度</span></div>`;
+}
+
+/* ============================================================ ROADMAP（最上層入口）============================================================ */
+let ROADMAP_EDIT=false;
+function toggleRoadmapEdit(){ ROADMAP_EDIT=!ROADMAP_EDIT; renderRoadmap(); }
+function renderRoadmap(){
+  const yrs=ROADMAP_YEARS;
+  const ed=ROADMAP_EDIT;
+  const activeDomains=ROADMAP_DOMAINS.filter(d=>DATA.pillars.some(p=>p.domain===d));
+  const cell=(pl,y,color)=>`<div class="card" style="padding:8px;min-height:64px">${DATA.roadmapItems.filter(it=>it.pillar===pl.id&&it.year===y).map(it=>roadmapChip(it,color)).join('')}</div>`;
+  const body=activeDomains.map(dom=>{
+    const color=domainColor(dom);
+    const pls=DATA.pillars.filter(p=>p.domain===dom);
+    return `
+      <div style="grid-column:1 / -1;display:flex;align-items:center;gap:8px;background:${color}26;color:#1a1a1a;border-left:6px solid ${color};border-radius:6px;padding:6px 12px;font-weight:800;font-size:14px;margin-top:6px"><span style="flex:1">${esc(dom)}</span>${ed?`<label style="display:flex;align-items:center;gap:4px;font-weight:600;font-size:12px;cursor:pointer">🎨 顏色<input type="color" value="${color}" onchange="setDomainColor('${dom}',this.value)" style="width:28px;height:22px;border:none;background:none;padding:0;cursor:pointer"></label>`:''}</div>
+      ${pls.map(pl=>`
+        <div style="display:flex;align-items:center;gap:4px;font-weight:700;font-size:13px;color:#1a1a1a;background:${color}14;border-left:5px solid ${color};border-radius:6px;padding:8px">
+          <span style="flex:1">${esc(pl.name)}</span>
+          ${ed?`<button class="btn sm ghost" style="padding:0 6px" onclick="editPillarName('${pl.id}')" title="改名技術平台">✎</button>
+          <button class="btn sm ghost" style="padding:0 6px" onclick="delPillar('${pl.id}')" title="刪除技術平台">🗑</button>`:''}
+        </div>
+        ${yrs.map(y=>cell(pl,y,color)).join('')}
+      `).join('')}`;
+  }).join('');
+  document.getElementById('view').innerHTML=`
+    <div class="section-title">🗺️ Technology Roadmap 三年計畫 <span class="count">點項目可展開連結的專案/模塊</span>
+      <span class="spacer" style="flex:1"></span>
+      ${ed?`<button class="btn sm" onclick="editRoadmapItem()">＋ 新增項目</button>`:''}
+      <button class="btn sm ${ed?'':'ghost'}" onclick="toggleRoadmapEdit()">${ed?'✓ 完成編輯':'✏️ 編輯模式'}</button></div>
+    <div style="display:grid;grid-template-columns:180px repeat(${yrs.length},1fr);gap:8px;align-items:stretch">
+      <div></div>${yrs.map(y=>`<div style="text-align:center;font-weight:800;color:#fff;background:var(--blue);border-radius:6px;padding:8px">${y}</div>`).join('')}
+      ${body}
+    </div>
+    ${activeDomains.length?'':'<div class="empty" style="margin-top:14px">尚無 Roadmap 技術平台，開啟「✏️ 編輯模式」後點「＋ 新增項目」開始建立。</div>'}`;
+}
+function roadmapChip(it,color){
+  const pn=(it.projectIds||[]).length, mn=(it.moduleIds||[]).length; color=color||'#2f6fd0';
+  return `<div onclick="roadmapDetail('${it.id}')" style="cursor:pointer;background:${color}22;color:#1a1a1a;border-left:4px solid ${color};border-radius:6px;padding:7px 9px;margin-bottom:6px;font-size:12px;line-height:1.35">
+    <div style="font-weight:600">${esc(it.title)}</div>
+    <div style="margin-top:4px;color:#555;font-size:11px">${pn?`🚗 ${pn} 專案 `:''}${mn?`🧩 ${mn} 模塊`:''}${(!pn&&!mn)?'尚未連結':''}</div>
+  </div>`;
+}
+function editPillarName(id){ const p=pil(id); const v=(prompt('修改技術平台名稱', p.name)||'').trim(); if(v){ const pp=DATA.pillars.find(x=>x.id===id); pp.name=v; save(); render(); } }
+function delPillar(id){ const n=DATA.roadmapItems.filter(it=>it.pillar===id).length;
+  if(n){ alert(`此技術平台底下還有 ${n} 個項目，請先刪除或改派該些項目。`); return; }
+  const pn=(pil(id).name)||'此技術平台';
+  if(confirm(`刪除技術平台「${pn}」？\n（刪除後可按下方「復原」按鈕還原）`)){ snapshotUndo(pn); DATA.pillars=DATA.pillars.filter(x=>x.id!==id); save(); render(); showUndoToast(pn); } }
+function roadmapDetail(id){
+  const it=DATA.roadmapItems.find(x=>x.id===id); if(!it) return;
+  const projs=(it.projectIds||[]).map(proj).filter(Boolean);
+  const mods=(it.moduleIds||[]).map(mod).filter(Boolean);
+  openModal(`<h3>${esc(it.title)}</h3>
+    <div class="meta" style="color:var(--muted);margin-bottom:12px">${esc(pil(it.pillar).domain)}｜${esc(pil(it.pillar).name)}｜${esc(it.year)}</div>
+    <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px">連結專案</div>
+    ${projs.length?projs.map(p=>`<div class="card" style="padding:10px;margin-bottom:6px;cursor:pointer" onclick="closeModal();gotoProject('${p.id}')">
+        <div style="display:flex;justify-content:space-between"><b>${esc(p.name)}</b>${projStatusBadge(p)}</div>
+        <div class="pbar" style="margin-top:6px"><span style="width:${projProgress(p)}%"></span></div>
+        <div style="font-size:11px;color:var(--muted);margin-top:3px">進度 ${projProgress(p)}%｜投入 ${projHeadcount(p)} 人｜效益 ${projBenefit(p)} ➜ 點擊前往</div></div>`).join('')
+      :'<div style="color:var(--muted);font-size:12px;margin-bottom:8px">（無）</div>'}
+    <div style="font-size:12px;font-weight:700;color:var(--muted);margin:10px 0 6px">連結技術模塊</div>
+    ${mods.length?mods.map(m=>`<div class="card" style="padding:10px;margin-bottom:6px;cursor:pointer" onclick="closeModal();gotoModule('${m.id}')">
+        <div style="display:flex;justify-content:space-between"><b>${esc(m.name)}</b>${statusBadge(m.status)}</div>
+        <div class="pbar" style="margin-top:6px"><span style="width:${m.progress||0}%"></span></div>
+        <div style="font-size:11px;color:var(--muted);margin-top:3px">進度 ${m.progress||0}%｜${esc(m.phase||'')} ➜ 點擊前往</div></div>`).join('')
+      :'<div style="color:var(--muted);font-size:12px">（無）</div>'}
+    <div class="modal-foot"><button class="btn danger" style="margin-right:auto" onclick="delEntity('roadmapItems','${it.id}')">刪除</button>
+      <button class="btn ghost" onclick="closeModal()">關閉</button><button class="btn" onclick="editRoadmapItem('${it.id}')">編輯</button></div>`);
+}
+
+/* ============================================================ OVERVIEW ============================================================ */
+function renderOverview(){
+  // project completion by group
+  const groupStats = DATA.groups.map(gr=>{
+    const ps=DATA.projects.filter(p=>p.group===gr.id);
+    const avg=ps.length?Math.round(ps.reduce((a,p)=>a+projProgress(p),0)/ps.length):0;
+    return {gr, avg, n:ps.length};
+  });
+  // module completion by category
+  const cats=[...new Set(DATA.modules.map(m=>m.category))];
+  const catStats=cats.map(c=>{ const ms=DATA.modules.filter(m=>m.category===c); const avg=ms.length?Math.round(ms.reduce((a,m)=>a+(+m.progress||0),0)/ms.length):0; return {c,avg,n:ms.length}; });
+  // overload members
+  const over=DATA.members.filter(u=>memberLoad(u.id).total>(u.capPct||100));
+  const eff=deptEfficiency();
+
+  document.getElementById('view').innerHTML=`
+    <div class="section-title">人力投資效益 <span class="count">產出效益 ÷ 投入人數（單位：萬元/年）</span></div>
+    <div class="row">
+      <div class="kpi" style="background:linear-gradient(135deg,#16324f,#1f4e96);min-width:300px;flex:1;align-items:stretch;text-align:left">
+        <div class="label">人均產出效益</div>
+        <div class="pct">${eff.perHead}<span style="font-size:15px;font-weight:600"> 萬元/年·人</span></div>
+        <div style="font-size:12px;opacity:.85;margin-top:2px">總效益 ${eff.benefit} 萬元/年 ÷ 投入 ${eff.heads} 人</div>
+        <div style="border-top:1px solid rgba(255,255,255,.18);margin:12px 0 10px"></div>
+        <div style="font-size:12px;font-weight:700;opacity:.9;margin-bottom:8px">分維度人均效益</div>
+        <div id="effPanel">${effPanelInner()}</div></div>
+      <div class="card" style="flex:2;min-width:340px">
+        <div style="font-weight:700;color:var(--blue);margin-bottom:4px">效益 × 人力 分布（點泡泡可跳到該專案）</div>
+        ${bubbleChart()}</div>
+    </div>
+
+    <div class="section-title" style="margin-top:26px">專案線體完成度</div>
+    <div class="row">
+      ${groupStats.map(s=>`<div class="kpi" style="background:linear-gradient(135deg,${s.gr.color},${s.gr.color}cc)">
+        <div class="label">${esc(s.gr.name)} 完成度 <span style="opacity:.8">(${s.n}案)</span></div>
+        <div class="pct">${s.avg}%</div><div class="bar"><span style="width:${s.avg}%"></span></div></div>`).join('')}
+    </div>
+
+    <div class="section-title" style="margin-top:26px">技術模塊完成度</div>
+    <div class="row">
+      ${catStats.map(s=>`<div class="kpi" style="background:linear-gradient(135deg,#3a6ea5,#2f6fd0)">
+        <div class="label">${esc(s.c)} <span style="opacity:.8">(${s.n}項)</span></div>
+        <div class="pct">${s.avg}%</div><div class="bar"><span style="width:${s.avg}%"></span></div></div>`).join('')}
+    </div>
+
+    <div class="section-title" style="margin-top:26px">進度總覽圖 <span class="count">可切換分類依據並篩選顯示範圍</span></div>
+    <div class="card"><div id="ovChart"></div></div>
+
+    <div class="section-title" style="margin-top:26px">團隊負載警示 <span class="count">超載門檻：加權投入工時 > 工時上限</span></div>
+    <div class="row">
+      ${over.length? over.map(u=>{const l=memberLoad(u.id);return `<div class="card" style="border-left:5px solid var(--warn);min-width:240px">
+        <b>${esc(u.name)}</b> <span class="badge warn">超載</span><div class="meta" style="color:var(--muted);font-size:12px">${esc(u.title)}</div>
+        <div style="margin-top:8px">負責 ${l.projN} 專案 + ${l.modN} 模塊 = <b style="color:var(--warn)">${l.total}%</b> / 上限 ${u.capPct||100}%</div></div>`;}).join('')
+        : '<div class="card" style="color:var(--green)">✓ 目前沒有成員超載</div>'}
+    </div>`;
+  renderOvChart();
+}
+
+/* ---------- 進度總覽圖：可切換 專案/模塊/人員，並依分組篩選 ---------- */
+let OV_DIM='proj';                       // 'proj' 專案 | 'mod' 模塊 | 'mem' 人員
+const OV_SEL={proj:null, mod:null, mem:null}; // null=全部；陣列=被選取的 廠區/分類/團隊 id
+function setOvDim(d){ OV_DIM=d; renderOvChart(); }
+function ovGroups(){ // 目前維度的「分組」清單（用於著色 + 篩選）
+  if(OV_DIM==='proj') return DATA.groups.map(x=>({id:x.id,name:x.name,color:x.color}));
+  if(OV_DIM==='mod')  return (DATA.moduleCats||[]).map(x=>({id:x.id,name:x.name,color:x.color}));
+  return (DATA.teams||[]).map(x=>({id:x.id,name:x.name,color:x.color})).concat([{id:'',name:'未分組',color:'#9aa7bd'}]);
+}
+function ovIsSel(id){ const s=OV_SEL[OV_DIM]; return !s || s.includes(id); }
+function toggleOvFilter(id){
+  const ids=ovGroups().map(e=>e.id);
+  let s=OV_SEL[OV_DIM]?OV_SEL[OV_DIM].slice():ids.slice();
+  const i=s.indexOf(id); if(i>=0) s.splice(i,1); else s.push(id);
+  OV_SEL[OV_DIM]=(s.length>=ids.length)?null:s; // 全選 → 視為全部(null)
+  renderOvChart();
+}
+function ovChartItems(){
+  if(OV_DIM==='proj') return DATA.projects.filter(p=>ovIsSel(p.group))
+    .map(p=>({label:p.name.replace(/\(.*?\)/g,'').slice(0,12), value:projProgress(p), color:g(p.group).color}));
+  if(OV_DIM==='mod'){ const catId=name=>((DATA.moduleCats||[]).find(c=>c.name===name)||{}).id;
+    return DATA.modules.filter(m=>ovIsSel(catId(m.category)))
+      .map(m=>({label:m.name, value:+m.progress||0, color:catColor(m.category)})); }
+  return DATA.members.filter(u=>ovIsSel(u.teamId||'')).map(u=>{
+    const vals=[...DATA.projects.filter(p=>(p.memberIds||[]).includes(u.id)).map(p=>projProgress(p)),
+                ...DATA.modules.filter(m=>(m.ownerIds||[]).includes(u.id)).map(m=>+m.progress||0)];
+    const avg=vals.length?Math.round(vals.reduce((a,b)=>a+b,0)/vals.length):0;
+    const t=(DATA.teams||[]).find(x=>x.id===u.teamId);
+    return {label:u.name.replace(/（範例）/,''), value:avg, color:t?t.color:'#9aa7bd'}; });
+}
+function renderOvChart(){
+  const el=document.getElementById('ovChart'); if(!el) return;
+  const dimBtn=(d,t)=>`<button class="btn sm ${OV_DIM===d?'':'ghost'}" onclick="setOvDim('${d}')">${t}</button>`;
+  const flabel={proj:'廠區',mod:'分類',mem:'團隊'}[OV_DIM];
+  const note={proj:'各專案進度 %（依廠區著色）',mod:'各模塊進度 %（依分類著色）',mem:'各成員負責項目的平均完成度 %（依團隊著色）'}[OV_DIM];
+  const pills=ovGroups().map(e=>{const on=ovIsSel(e.id);return `<span onclick="toggleOvFilter('${e.id}')" style="cursor:pointer;user-select:none;display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:14px;font-size:12px;border:1px solid ${e.color};background:${on?e.color:'#fff'};color:${on?'#fff':e.color}"><span style="width:8px;height:8px;border-radius:2px;background:${on?'#fff':e.color}"></span>${esc(e.name)}</span>`;}).join('');
+  const items=ovChartItems();
+  el.innerHTML=`
+    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+      <span style="font-size:12px;font-weight:700;color:var(--muted)">分類依據：</span>${dimBtn('proj','🚗 專案')}${dimBtn('mod','🧩 模塊')}${dimBtn('mem','👥 人員')}</div>
+    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+      <span style="font-size:12px;font-weight:700;color:var(--muted)">顯示${flabel}：</span>${pills}
+      <span style="font-size:11px;color:var(--muted)">（點擊切換顯示）</span></div>
+    ${items.length?barChart(items):'<div class="empty">目前篩選條件下沒有資料</div>'}
+    <div style="font-size:11px;color:var(--muted);margin-top:8px">${note}</div>`;
+}
+
+/* ============================================================ PROJECTS ============================================================ */
+let PROJECT_VIEW='card'; // 'card' 卡片 | 'table' 一覽表
+function setProjectView(v){ PROJECT_VIEW=v; renderProjects(); }
+let PROJECT_EDIT=false;
+function toggleProjectEdit(){ PROJECT_EDIT=!PROJECT_EDIT; renderProjects(); }
+const editToggleBtn=(on,fn)=>`<button class="btn sm ${on?'':'ghost'}" onclick="${fn}()">${on?'✓ 完成編輯':'✏️ 編輯模式'}</button>`;
+// 廠區收折狀態（key=群組id，未分類=__orphan__）
+let PROJECT_COLLAPSE={};
+function projectKeys(){ const keys=DATA.groups.map(x=>x.id); if(DATA.projects.some(p=>!keys.includes(p.group))) keys.push('__orphan__'); return keys; }
+function toggleGroupCollapse(k){ PROJECT_COLLAPSE[k]=!PROJECT_COLLAPSE[k]; renderProjects(); }
+let PROJ_STATION_OPEN={};
+function toggleProjStations(id){ PROJ_STATION_OPEN[id]=!PROJ_STATION_OPEN[id]; renderProjects(); }
+function setAllProjectCollapse(v){ projectKeys().forEach(k=>PROJECT_COLLAPSE[k]=v); renderProjects(); }
+function toggleAllProjectCollapse(){ const ks=projectKeys(); const allCol=ks.length&&ks.every(k=>PROJECT_COLLAPSE[k]); setAllProjectCollapse(!allCol); }
+// 收合/展開全部切換鈕（共用）：allCol=目前是否全部收合
+const collapseToggleBtn=(fn,allCol)=>`<button class="btn sm ghost" onclick="${fn}()" title="收合／展開全部">${allCol?'⊞ 展開全部':'⊟ 收合全部'}</button>`;
+// ---- 一覽表欄位排序（各群組內排序，維持分組）----
+let PROJECT_SORT={key:null,dir:1}, MODULE_SORT={key:null,dir:1}, MEMBER_SORT={key:null,dir:1};
+const SORT_REF={project:()=>PROJECT_SORT, module:()=>MODULE_SORT, member:()=>MEMBER_SORT};
+const SORT_RENDER={project:renderProjects, module:renderModules, member:renderMembers};
+function toggleSort(which,key){ const s=SORT_REF[which](); if(s.key===key){ s.dir=-s.dir; } else { s.key=key; s.dir=1; } SORT_RENDER[which](); }
+function applySort(items,s,acc){ if(!s.key||!acc[s.key]) return items; const f=acc[s.key]; return items.slice().sort((a,b)=>{ const va=f(a),vb=f(b); if(typeof va==='number'&&typeof vb==='number') return (va-vb)*s.dir; return String(va==null?'':va).localeCompare(String(vb==null?'':vb),'zh-Hant')*s.dir; }); }
+function sortTh(which,key,label,style){ const s=SORT_REF[which](); const on=s.key===key; const arrow=on?(s.dir>0?'▲':'▼'):'↕'; return `<th style="${style||''}cursor:pointer;user-select:none" onclick="toggleSort('${which}','${key}')" title="點擊排序">${label}<span style="font-size:9px;color:${on?'var(--blue)':'#c2ccda'};margin-left:3px">${arrow}</span></th>`; }
+const PROJ_ACC={ name:p=>p.name, customer:p=>p.customer, progress:p=>projProgress(p), status:p=>p.status||'', benefit:p=>projBenefit(p) };
+const MOD_ACC={ name:m=>m.name, progress:m=>+m.progress||0, status:m=>m.status||'' };
+const MEM_ACC={ name:u=>u.name, load:u=>memberLoad(u.id).total };
+function renderProjects(){
+  const byGroup=DATA.groups.map(gr=>({gr,items:DATA.projects.filter(p=>p.group===gr.id)}));
+  const groupIds=DATA.groups.map(x=>x.id);
+  const orphans=DATA.projects.filter(p=>!groupIds.includes(p.group));
+  const ed=PROJECT_EDIT;
+  const head=`
+    <div class="section-title">專案進度 <span class="count">共 ${DATA.projects.length} 案</span>
+      <span class="spacer" style="flex:1"></span>
+      <button class="btn sm ${PROJECT_VIEW==='table'?'':'ghost'}" onclick="setProjectView('table')">📋 一覽表</button>
+      <button class="btn sm ${PROJECT_VIEW==='card'?'':'ghost'}" onclick="setProjectView('card')">🗂 卡片</button>
+      ${collapseToggleBtn('toggleAllProjectCollapse', projectKeys().length&&projectKeys().every(k=>PROJECT_COLLAPSE[k]))}
+      ${ed?`<button class="btn sm" onclick="editProject()">＋ 新增專案</button>`:''}
+      ${editToggleBtn(ed,'toggleProjectEdit')}</div>`;
+  const groupHeader=(gr,key)=>{ const col=PROJECT_COLLAPSE[key]; return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+      <span onclick="toggleGroupCollapse('${key}')" style="cursor:pointer;user-select:none;display:inline-flex;align-items:center;gap:8px">
+        <span style="font-size:12px;color:${gr.color};width:12px;display:inline-block">${col?'▸':'▾'}</span>
+        <span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:${gr.color}"></span>
+        <span style="font-weight:700;color:${gr.color}">${esc(gr.name)}（${DATA.projects.filter(p=>p.group===gr.id).length}）</span></span>
+      ${ed?`<button class="btn sm ghost" style="padding:1px 7px" onclick="editGroup('${gr.id}')" title="編輯廠區">✎</button>
+      <button class="btn sm ghost" style="padding:1px 7px" onclick="delGroup('${gr.id}')" title="刪除廠區">🗑</button>`:''}</div>`; };
+
+  if(PROJECT_VIEW==='table'){
+    const rows=[];
+    const pushGroup=(gr,items,orphan,key)=>{
+      const col=PROJECT_COLLAPSE[key];
+      rows.push(`<tr class="teamrow"><td colspan="8"><span onclick="toggleGroupCollapse('${key}')" style="cursor:pointer;user-select:none"><span style="margin-right:6px">${col?'▸':'▾'}</span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${gr.color};margin-right:6px"></span>${esc(gr.name)}（${items.length}）</span>${(orphan||!ed)?'':`
+        <button class="btn sm ghost" style="padding:0 6px;margin-left:6px" onclick="editGroup('${gr.id}')">✎</button>
+        <button class="btn sm ghost" style="padding:0 6px" onclick="delGroup('${gr.id}')">🗑</button>`}</td></tr>`);
+      if(col) return;
+      if(!items.length){ rows.push('<tr><td colspan="8" style="color:var(--muted)">尚無專案</td></tr>'); return; }
+      applySort(items,PROJECT_SORT,PROJ_ACC).forEach(p=>{ rows.push(projectRow(p)); if(PROJ_STATION_OPEN[p.id]) rows.push(stationRows(p)); });
+    };
+    byGroup.forEach(b=>pushGroup(b.gr,b.items,false,b.gr.id));
+    if(orphans.length) pushGroup({id:'',name:'未分類',color:'#b8c2d0'},orphans,true,'__orphan__');
+    document.getElementById('view').innerHTML=head+`
+      <table class="mtable">
+        <thead><tr>${sortTh('project','name','專案')}${sortTh('project','customer','客戶')}${sortTh('project','progress','進度','width:150px;')}${sortTh('project','status','狀態')}${sortTh('project','benefit','投入/效益','width:150px;')}<th>PM</th><th>技術模塊</th><th style="width:96px"></th></tr></thead>
+        <tbody>${rows.join('')}</tbody></table>`;
+    return;
+  }
+
+  document.getElementById('view').innerHTML=head+
+    byGroup.map(b=>`<div style="margin-bottom:20px">${groupHeader(b.gr,b.gr.id)}
+        ${PROJECT_COLLAPSE[b.gr.id]?'':`<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(300px,1fr))">
+          ${b.items.map(p=>projectCard(p)).join('')||'<div class="empty">尚無專案</div>'}
+        </div>`}</div>`).join('')+
+    (orphans.length?`<div style="margin-bottom:20px">
+      <div style="margin-bottom:8px"><span onclick="toggleGroupCollapse('__orphan__')" style="cursor:pointer;user-select:none;font-weight:700;color:var(--muted)"><span style="margin-right:6px">${PROJECT_COLLAPSE['__orphan__']?'▸':'▾'}</span>未分類（${orphans.length}）</span><span style="font-size:11px;font-weight:400;color:var(--muted)">　編輯專案可重新指派廠區</span></div>
+      ${PROJECT_COLLAPSE['__orphan__']?'':`<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(300px,1fr))">
+        ${orphans.map(p=>projectCard(p)).join('')}
+      </div>`}</div>`:'');
+}
+function projectRow(p){
+  const h=projHeadcount(p);
+  const mems=(p.memberIds||[]).map(id=>mem(id)?esc(mem(id).name):'').filter(Boolean).join('、')||'<span style="color:var(--warn)">⚠ 未指派</span>';
+  return `<tr id="proj-${p.id}">
+    <td><div class="nm">${esc(p.name)}</div><div class="ti">${esc(p.phase||'')}</div></td>
+    <td style="white-space:nowrap">${esc(p.customer||'-')}</td>
+    <td><span style="white-space:nowrap"><span class="mini-meter"><span style="width:${projProgress(p)}%;background:${g(p.group).color}"></span></span><b>${projProgress(p)}%</b></span><div class="ti">預計 ${esc(p.eta||'-')}</div>${(p.stations||[]).length?`<div class="ti" style="color:var(--blue);cursor:pointer" onclick="toggleProjStations('${p.id}')">${PROJ_STATION_OPEN[p.id]?'▾':'▸'} ${(p.stations||[]).length} 站</div>`:''}</td>
+    <td>${projStatusBadge(p)}</td>
+    <td style="font-size:12px;white-space:nowrap">👥 ${h||0} 人　💰 <b style="color:var(--blue)">${projBenefit(p)}</b> 萬/年</td>
+    <td style="font-size:12px">PM：<b>${mems}</b></td>
+    <td style="max-width:180px">${projModuleIds(p).map(id=>mod(id)?`<span class="tag" style="font-size:10px;padding:1px 6px">${esc(mod(id).name)}</span>`:'').filter(Boolean).join('')||'<span style="color:var(--muted);font-size:11px">—</span>'}</td>
+    <td style="white-space:nowrap">${PROJECT_EDIT?`<button class="btn sm ghost" onclick="editProject('${p.id}')">編輯</button> <button class="btn sm danger" onclick="delEntity('projects','${p.id}')">刪除</button>`:''}</td>
+  </tr>`;
+}
+// AOI 站點明細列（表格展開用）— 欄位與主專案列一致；無資訊欄留白
+function stationRows(p){
+  const sts=p.stations||[]; if(!sts.length) return '';
+  return sts.map(st=>{
+    const s=autoStatus({progress:+st.progress||0,eta:st.eta});
+    const owns=(st.ownerIds||[]).map(id=>mem(id)?esc(mem(id).name):'').filter(Boolean).join('、');
+    const srm=st.roleMembers||{};
+    const roleTxt=FUNC_ROLES.filter(r=>(srm[r]||[]).length).map(r=>`${r}：${(srm[r]||[]).map(id=>mem(id)?esc(mem(id).name):'').filter(Boolean).join('、')}`).join('　');
+    const h=stationHeadcount(st);
+    return `<tr style="background:#fbfcfe">
+      <td style="padding-left:22px"><div class="nm" style="font-size:12px">└ ${esc(st.name||'-')}</div></td>
+      <td></td>
+      <td><span style="white-space:nowrap"><span class="mini-meter"><span style="width:${+st.progress||0}%;background:${g(p.group).color}"></span></span><b>${+st.progress||0}%</b></span><div class="ti">預計 ${esc(st.eta||'-')}</div></td>
+      <td><span class="badge ${s.cls}">${s.icon} ${s.label}</span></td>
+      <td style="font-size:12px;white-space:nowrap">👥 ${h||0} 人　💰 <b style="color:var(--blue)">${+st.benefit||0}</b> 萬/年</td>
+      <td style="font-size:11px;color:var(--muted)">${owns?'站長：<b>'+owns+'</b>':'<span style="color:var(--warn)">⚠ 未指派站長</span>'}${roleTxt?'<br><span style="color:var(--muted)">'+roleTxt+'</span>':''}</td>
+      <td style="max-width:180px">${(st.moduleIds||[]).map(id=>mod(id)?`<span class="tag" style="font-size:10px;padding:1px 6px">${esc(mod(id).name)}</span>`:'').filter(Boolean).join('')||'<span style="color:var(--muted);font-size:11px">—</span>'}</td>
+      <td></td>
+    </tr>`;
+  }).join('');
+}
+// 功能別成員文字（給表格用）
+function roleMembersText(obj){ const rm=obj.roleMembers||{}; return FUNC_ROLES.filter(r=>(rm[r]||[]).length).map(r=>`${r}：${(rm[r]||[]).map(id=>mem(id)?esc(mem(id).name):'').filter(Boolean).join('、')}`).join('　'); }
+// 成員緊湊區塊（給卡片用）：負責人 + 各功能別在同一個 wrap 區塊，每個角色一顆「角色：名字」膠囊，避免逐列拉長
+function memberChips(obj, leadIds){
+  const rm=obj.roleMembers||{};
+  const segs=[];
+  const leads=(leadIds||[]).map(id=>mem(id)?esc(mem(id).name):'').filter(Boolean);
+  if(leads.length) segs.push({role:'PM', names:leads, lead:true});
+  FUNC_ROLES.forEach(r=>{ const ns=(rm[r]||[]).map(id=>mem(id)?esc(mem(id).name):'').filter(Boolean); if(ns.length) segs.push({role:r, names:ns}); });
+  if(!segs.length) return '<span style="font-size:11px;color:var(--warn)">⚠ 未指派成員</span>';
+  return `<div style="display:flex;flex-wrap:wrap;gap:5px">${segs.map(s=>`<span style="display:inline-flex;align-items:center;font-size:11px;background:${s.lead?'#eaf0fa':'#f1f3f7'};border-radius:10px;padding:2px 8px;line-height:1.5"><b style="color:${s.lead?'var(--blue)':'#888'};font-weight:700;margin-right:4px">${s.role}</b>${s.names.join('、')}</span>`).join('')}</div>`;
+}
+function stationCardList(p){
+  const sts=p.stations||[]; if(!sts.length) return '';
+  return `<div style="margin-top:8px;border-top:1px dashed #e2e8f0;padding-top:6px">
+    <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px">AOI 站點（${sts.length}）</div>
+    ${sts.map(st=>{ const s=autoStatus({progress:+st.progress||0,eta:st.eta});
+      const srm=st.roleMembers||{};
+      const people=[...(st.ownerIds||[]).map(id=>mem(id)?esc(mem(id).name):'').filter(Boolean), ...FUNC_ROLES.flatMap(r=>(srm[r]||[]).map(id=>mem(id)?esc(mem(id).name):'')).filter(Boolean)];
+      const who=[...new Set(people)].join('、');
+      return `<div style="display:flex;align-items:center;gap:6px;font-size:11px;margin-bottom:3px">
+        <span style="flex:1">${esc(st.name||'-')}${who?` <span style="color:var(--muted)">· ${who}</span>`:''}</span>
+        <span class="mini-meter" style="width:48px"><span style="width:${+st.progress||0}%;background:${g(p.group).color}"></span></span>
+        <b style="width:34px;text-align:right">${+st.progress||0}%</b>
+        <span class="badge ${s.cls}" style="transform:scale(.85)">${s.icon}</span></div>`;}).join('')}
+  </div>`;
+}
+function projectCard(p){
+  const h=projHeadcount(p);
+  return `<div class="card pcard" style="border-left-color:${g(p.group).color}" id="proj-${p.id}">
+    <div class="top"><div><div class="name">${esc(p.name)}</div><div class="meta">客戶：${esc(p.customer||'-')}</div></div>${projStatusBadge(p)}</div>
+    <div class="phase">階段：${esc(p.phase||'-')}</div>
+    <div class="row" style="align-items:flex-end"><div style="flex:1"><span class="progress-num">${projProgress(p)}%</span>
+      <div class="pbar"><span style="width:${projProgress(p)}%"></span></div></div>
+      <div style="text-align:right;font-size:12px;color:var(--muted)">預計<br>${esc(p.eta||'-')}</div></div>
+    <div style="display:flex;gap:14px;margin-top:8px;font-size:12px">
+      <span>👥 投入 <b>${h||0}</b> 人</span>
+      <span>💰 效益 <b style="color:var(--blue)">${projBenefit(p)}</b> 萬元/年</span>
+      <span style="color:var(--muted)">${esc(p.gains||'')}</span></div>
+    <div style="margin-top:6px">${memberChips(p, p.memberIds)}</div>
+    ${stationCardList(p)}
+    ${PROJECT_EDIT?`<div class="cardrow"><button class="btn sm ghost" onclick="editProject('${p.id}')">編輯</button>
+      <button class="btn sm danger" onclick="delEntity('projects','${p.id}')">刪除</button></div>`:''}
+  </div>`;
+}
+
+/* ============================================================ MODULES ============================================================ */
+let MODULE_VIEW='card'; // 'card' 卡片 | 'table' 一覽表
+function setModuleView(v){ MODULE_VIEW=v; renderModules(); }
+let MODULE_EDIT=false;
+function toggleModuleEdit(){ MODULE_EDIT=!MODULE_EDIT; renderModules(); }
+// 分類收折狀態（key=分類名稱）
+let MODULE_COLLAPSE={};
+function moduleKeys(){ const cats=(DATA.moduleCats||[]).map(c=>c.name); DATA.modules.forEach(m=>{ const c=m.category||'未分類'; if(!cats.includes(c)) cats.push(c); }); return cats; }
+function toggleCatCollapse(k){ MODULE_COLLAPSE[k]=!MODULE_COLLAPSE[k]; renderModules(); }
+function setAllModuleCollapse(v){ moduleKeys().forEach(k=>MODULE_COLLAPSE[k]=v); renderModules(); }
+function toggleAllModuleCollapse(){ const ks=moduleKeys(); const allCol=ks.length&&ks.every(k=>MODULE_COLLAPSE[k]); setAllModuleCollapse(!allCol); }
+function renderModules(){
+  // 以 moduleCats 實體為主軸排序；模塊歸屬於不存在的分類則歸入「未分類」
+  const catNames=(DATA.moduleCats||[]).map(c=>c.name);
+  const cats=[...catNames];
+  DATA.modules.forEach(m=>{ const c=m.category||'未分類'; if(!cats.includes(c)) cats.push(c); });
+  const ed=MODULE_EDIT;
+  const head=`
+    <div class="section-title">技術模塊 <span class="count">共 ${DATA.modules.length} 項 / ${(DATA.moduleCats||[]).length} 分類</span>
+      <span class="spacer" style="flex:1"></span>
+      <button class="btn sm ${MODULE_VIEW==='table'?'':'ghost'}" onclick="setModuleView('table')">📋 一覽表</button>
+      <button class="btn sm ${MODULE_VIEW==='card'?'':'ghost'}" onclick="setModuleView('card')">🗂 卡片</button>
+      ${collapseToggleBtn('toggleAllModuleCollapse', moduleKeys().length&&moduleKeys().every(k=>MODULE_COLLAPSE[k]))}
+      ${ed?`<button class="btn sm ghost" onclick="editModuleCat()">＋ 新增分類</button>
+      <button class="btn sm" onclick="editModule()">＋ 新增模塊</button>`:''}
+      ${editToggleBtn(ed,'toggleModuleEdit')}</div>`;
+
+  const catObj=name=>(DATA.moduleCats||[]).find(c=>c.name===name);
+  const catBtns=name=>{ const o=catObj(name); return (o&&ed)?`
+      <button class="btn sm ghost" style="padding:0 6px;margin-left:6px" onclick="editModuleCat('${o.id}')" title="編輯分類">✎</button>
+      <button class="btn sm ghost" style="padding:0 6px" onclick="delModuleCat('${o.id}')" title="刪除分類">🗑</button>`:''; };
+
+  if(MODULE_VIEW==='table'){
+    const rows=[];
+    cats.forEach(c=>{
+      const items=DATA.modules.filter(m=>(m.category||'未分類')===c);
+      if(!items.length && !catObj(c)) return;
+      const col=catColor(c); const cc=MODULE_COLLAPSE[c];
+      rows.push(`<tr class="teamrow"><td colspan="6"><span onclick="toggleCatCollapse('${esc(c)}')" style="cursor:pointer;user-select:none"><span style="margin-right:6px">${cc?'▸':'▾'}</span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${col};margin-right:6px"></span>${esc(c)}（${items.length}）</span>${catBtns(c)}</td></tr>`);
+      if(cc) return;
+      if(!items.length) rows.push('<tr><td colspan="6" style="color:var(--muted)">尚無模塊</td></tr>');
+      applySort(items,MODULE_SORT,MOD_ACC).forEach(m=>rows.push(moduleRow(m)));
+    });
+    document.getElementById('view').innerHTML=head+`
+      <table class="mtable">
+        <thead><tr>${sortTh('module','name','模塊')}${sortTh('module','progress','進度','width:150px;')}${sortTh('module','status','狀態')}<th>能力</th><th>PM</th><th style="width:96px"></th></tr></thead>
+        <tbody>${rows.join('')}</tbody></table>`;
+    return;
+  }
+
+  document.getElementById('view').innerHTML=head+
+    cats.map(c=>{
+      const items=DATA.modules.filter(m=>(m.category||'未分類')===c);
+      if(!items.length && !catObj(c)) return '';
+      const col=catColor(c); const cc=MODULE_COLLAPSE[c];
+      return `<div style="margin-bottom:20px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <span onclick="toggleCatCollapse('${esc(c)}')" style="cursor:pointer;user-select:none;display:inline-flex;align-items:center;gap:8px">
+          <span style="font-size:12px;color:${col};width:12px;display:inline-block">${cc?'▸':'▾'}</span>
+          <span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:${col}"></span>
+          <span style="font-weight:700;color:${col}">${esc(c)}（${items.length}）</span></span>${catBtns(c)}</div>
+      ${cc?'':`<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(300px,1fr))">
+        ${items.map(m=>moduleCard(m)).join('')||'<div class="empty">尚無模塊</div>'}
+      </div>`}</div>`;
+    }).join('');
+}
+function editModuleCat(id){
+  const c=id?(DATA.moduleCats||[]).find(x=>x.id===id):null;
+  openModal(`<h3>${c?'編輯':'新增'}模塊分類</h3>
+    <div class="field"><label>分類名稱</label><input id="f_catName" value="${c?esc(c.name):''}" placeholder="如 3D量檢測"></div>
+    <div class="field"><label>代表顏色</label><input id="f_catColor" type="color" value="${c?c.color:'#2f6fd0'}" style="width:64px;height:38px;padding:2px"></div>
+    <div class="hint">${c?'改名稱會同步套用到所有屬於此分類的模塊。':'建立後可在編輯模塊時選用此分類。'}</div>
+    <div class="modal-foot"><button class="btn ghost" onclick="closeModal()">取消</button><button class="btn" onclick="saveModuleCat('${c?c.id:''}')">儲存</button></div>`);
+}
+function saveModuleCat(id){
+  const name=val('f_catName').trim(), color=val('f_catColor');
+  if(!name){ alert('請輸入分類名稱'); return; }
+  if(!DATA.moduleCats) DATA.moduleCats=[];
+  if(id){
+    const c=DATA.moduleCats.find(x=>x.id===id); const old=c.name;
+    if(DATA.moduleCats.some(x=>x.id!==id&&x.name===name)){ alert('已有相同名稱的分類'); return; }
+    c.name=name; c.color=color;
+    if(old!==name) DATA.modules.forEach(m=>{ if((m.category||'')===old) m.category=name; }); // 改名同步
+  } else {
+    if(DATA.moduleCats.some(x=>x.name===name)){ alert('已有相同名稱的分類'); return; }
+    DATA.moduleCats.push({id:uid('mc'), name, color});
+  }
+  save(); closeModal(); render();
+}
+function delModuleCat(id){
+  const c=(DATA.moduleCats||[]).find(x=>x.id===id); if(!c) return;
+  const n=DATA.modules.filter(m=>(m.category||'')===c.name).length;
+  if(!confirm(`確定刪除分類「${c.name}」？${n?`\n其下 ${n} 個模塊將改為「未分類」。`:''}\n（刪除後可按下方「復原」按鈕還原）`)) return;
+  snapshotUndo(c.name);
+  DATA.modules.forEach(m=>{ if((m.category||'')===c.name) m.category='未分類'; });
+  DATA.moduleCats=DATA.moduleCats.filter(x=>x.id!==id);
+  save(); render(); showUndoToast(c.name);
+}
+function moduleRow(m){
+  const caps=(m.caps||[]).map(c=>`<span class="tag">${esc(c)}</span>`).join('');
+  const owners=(m.ownerIds||[]).map(id=>mem(id)?esc(mem(id).name):'').filter(Boolean).join('、')||'<span style="color:var(--warn)">⚠ 未指派</span>';
+  const roles=roleMembersText(m);
+  const col=catColor(m.category);
+  return `<tr id="mod-${m.id}">
+    <td><div class="nm">${esc(m.name)}</div><div class="ti">${esc(m.phase||'')}</div></td>
+    <td><span style="white-space:nowrap"><span class="mini-meter"><span style="width:${m.progress||0}%;background:${col}"></span></span><b>${m.progress||0}%</b></span><div class="ti">預計 ${esc(m.eta||'-')}</div></td>
+    <td>${statusBadge(m.status)}</td>
+    <td style="max-width:220px">${caps}</td>
+    <td style="font-size:12px;max-width:220px">PM：${owners}${roles?'<br><span style="font-size:11px;color:var(--muted)">'+roles+'</span>':''}</td>
+    <td style="white-space:nowrap">${MODULE_EDIT?`<button class="btn sm ghost" onclick="editModule('${m.id}')">編輯</button> <button class="btn sm danger" onclick="delEntity('modules','${m.id}')">刪除</button>`:''}</td>
+  </tr>`;
+}
+function moduleCard(m){
+  return `<div class="card pcard" style="border-left-color:${catColor(m.category)}" id="mod-${m.id}">
+    <div class="top"><div class="name">${esc(m.name)}</div>${statusBadge(m.status)}</div>
+    <div class="phase">階段：${esc(m.phase||'-')}</div>
+    <div class="row" style="align-items:flex-end"><div style="flex:1"><span class="progress-num">${m.progress||0}%</span>
+      <div class="pbar"><span style="width:${m.progress||0}%"></span></div></div>
+      <div style="text-align:right;font-size:12px;color:var(--muted)">預計<br>${esc(m.eta||'-')}</div></div>
+    <div style="margin-top:8px">能力：${(m.caps||[]).map(c=>`<span class="tag">${esc(c)}</span>`).join('')}</div>
+    <div style="margin-top:6px">${memberChips(m, m.ownerIds)}</div>
+    ${MODULE_EDIT?`<div class="cardrow"><button class="btn sm ghost" onclick="editModule('${m.id}')">編輯</button>
+      <button class="btn sm danger" onclick="delEntity('modules','${m.id}')">刪除</button></div>`:''}
+  </div>`;
+}
+
+/* ============================================================ MEMBERS ============================================================ */
+let MEMBER_VIEW='table'; // 'table' 一覽表 | 'card' 卡片
+function setMemberView(v){ MEMBER_VIEW=v; renderMembers(); }
+let MEMBER_EDIT=false;
+function toggleMemberEdit(){ MEMBER_EDIT=!MEMBER_EDIT; renderMembers(); }
+function renderMembers(){
+  const teams=DATA.teams||[];
+  const byTeam=teams.map(t=>({t,items:DATA.members.filter(u=>u.teamId===t.id)}));
+  const teamIds=teams.map(t=>t.id);
+  const orphans=DATA.members.filter(u=>!teamIds.includes(u.teamId));
+  const over=DATA.members.filter(u=>memberLoad(u.id).total>(u.capPct||100)).length;
+  const ed=MEMBER_EDIT;
+  const head=`
+    <div class="note">Loading = 負責「專案數 + 模塊開發數」自動計算（含功能別成員），超過個人上限即顯示超載。</div>
+    <div class="section-title">團隊成員 <span class="count">共 ${DATA.members.length} 人 / ${teams.length} 團隊${over?`　<span style="color:var(--warn)">⚠ ${over} 人超載</span>`:''}</span>
+      <span class="spacer" style="flex:1"></span>
+      <button class="btn sm ${MEMBER_VIEW==='table'?'':'ghost'}" onclick="setMemberView('table')">📋 一覽表</button>
+      <button class="btn sm ${MEMBER_VIEW==='card'?'':'ghost'}" onclick="setMemberView('card')">🗂 卡片</button>
+      ${ed?`<button class="btn sm ghost" onclick="editRoleWorkload()">⚙️ 角色工時</button>
+      <button class="btn sm" onclick="editMember()">＋ 新增成員</button>`:''}
+      ${editToggleBtn(ed,'toggleMemberEdit')}</div>`;
+
+  if(MEMBER_VIEW==='card'){
+    const gridOpen='<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(320px,1fr))">';
+    document.getElementById('view').innerHTML=head+
+      byTeam.map(b=>`<div style="margin-bottom:20px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+          <span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:${b.t.color}"></span>
+          <span style="font-weight:700;color:${b.t.color}">${esc(b.t.name)}（${b.items.length}）</span>
+          ${ed?`<button class="btn sm ghost" style="padding:1px 7px" onclick="editTeam('${b.t.id}')" title="編輯團隊">✎</button>
+          <button class="btn sm ghost" style="padding:1px 7px" onclick="delTeam('${b.t.id}')" title="刪除團隊">🗑</button>`:''}
+        </div>
+        ${gridOpen}${b.items.map(u=>memberCard(u)).join('')||'<div class="empty">尚無成員</div>'}</div></div>`).join('')+
+      (orphans.length?`<div style="margin-bottom:20px">
+        <div style="font-weight:700;color:var(--muted);margin-bottom:8px">未分組（${orphans.length}）<span style="font-size:11px;font-weight:400">　編輯成員可指派團隊</span></div>
+        ${gridOpen}${orphans.map(u=>memberCard(u)).join('')}</div></div>`:'');
+    return;
+  }
+
+  // 一覽表
+  const teamCell=t=>t?`<span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${t.color};margin-right:5px;vertical-align:middle"></span>${esc(t.name)}`:'<span style="color:var(--muted)">未分組</span>';
+  const rows=[];
+  const pushGroup=(t,items)=>{
+    if(t) rows.push(`<tr class="teamrow"><td colspan="6"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${t.color};margin-right:6px"></span>${esc(t.name)}（${items.length}）${ed?`
+      <button class="btn sm ghost" style="padding:0 6px;margin-left:6px" onclick="editTeam('${t.id}')">✎</button>
+      <button class="btn sm ghost" style="padding:0 6px" onclick="delTeam('${t.id}')">🗑</button>`:''}</td></tr>`);
+    if(!items.length){ rows.push('<tr><td colspan="6" style="color:var(--muted)">尚無成員</td></tr>'); return; }
+    applySort(items,MEMBER_SORT,MEM_ACC).forEach(u=>rows.push(memberRow(u, t)));
+  };
+  byTeam.forEach(b=>pushGroup(b.t,b.items));
+  if(orphans.length) pushGroup({id:'',name:'未分組',color:'#b8c2d0'},orphans);
+
+  document.getElementById('view').innerHTML=head+`
+    <table class="mtable">
+      <thead><tr>${sortTh('member','name','成員')}${sortTh('member','load','Loading','width:170px;')}<th>狀態</th><th>負責內容</th><th>技能</th><th style="width:96px"></th></tr></thead>
+      <tbody>${rows.join('')}</tbody>
+    </table>`;
+}
+function memberRow(u, team){
+  const l=memberLoad(u.id); const cap=u.capPct||100; const ratio=Math.min(l.total/cap,1)*100;
+  const color=l.total>cap?'var(--warn)':l.total>=cap*0.75?'#e6a23c':'var(--green)';
+  const badge=l.total>cap?'<span class="badge warn">超載</span>':l.total>=cap*0.75?'<span class="badge new">滿載</span>':'<span class="badge ok">有餘力</span>';
+  const projs=DATA.projects.filter(p=>personProjPct(u.id,p)>0);
+  const mods=DATA.modules.filter(m=>personModPct(u.id,m)>0);
+  const work=[ projs.length?`專案：${projs.map(p=>esc(p.name)).join('、')}`:'', mods.length?`模塊：${mods.map(m=>esc(m.name)).join('、')}`:'' ].filter(Boolean).join('<br>') || '<span style="color:var(--muted)">—</span>';
+  const skills=(u.skillRoles||[]).map(r=>`<span class="tag" style="background:#eef3e8;color:#5a7a3a">${esc(r)}</span>`).join('')||'<span style="color:var(--muted)">未設定</span>';
+  return `<tr>
+    <td><div class="nm">${esc(u.name)}</div><div class="ti">${esc(u.title||'')}</div></td>
+    <td><span style="white-space:nowrap"><span class="mini-meter"><span style="width:${ratio}%;background:${color}"></span></span><b style="color:${color}">${l.total}%</b>${cap!==100?'/'+cap+'%':''}</span><div class="ti">${l.projN}專案+${l.modN}模塊</div></td>
+    <td>${badge}</td>
+    <td style="font-size:11px;color:var(--muted);max-width:240px">${work}</td>
+    <td style="max-width:200px">${skills}</td>
+    <td style="white-space:nowrap">${MEMBER_EDIT?`<button class="btn sm ghost" onclick="editMember('${u.id}')">編輯</button> <button class="btn sm danger" onclick="delEntity('members','${u.id}')">刪除</button>`:''}</td>
+  </tr>`;
+}
+function memberCard(u){
+  const l=memberLoad(u.id); const cap=u.capPct||100; const ratio=Math.min(l.total/cap,1.4);
+  const color=l.total>cap?'var(--warn)':l.total>=cap*0.75?'#e6a23c':'var(--green)';
+  const projs=DATA.projects.filter(p=>personProjPct(u.id,p)>0);
+  const mods=DATA.modules.filter(m=>personModPct(u.id,m)>0);
+  return `<div class="card mcard">
+    <div class="top"><div><div class="name">${esc(u.name)}${u.title?` <span style="font-size:11px;font-weight:500;color:var(--muted)">${esc(u.title)}</span>`:''}</div></div></div>
+    <div>
+      <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--muted);margin-bottom:6px"><span>${l.total>cap?'<span class="badge warn">超載</span>':l.total>=cap*0.75?'<span class="badge new">滿載</span>':'<span class="badge ok">有餘力</span>'}</span><span><b style="color:${color}">${l.total}%</b>${cap!==100?' / '+cap+'%':''}</span></div>
+      <div class="load-meter"><span style="width:${ratio*71}%;background:${color}"></span></div>
+      <div style="font-size:11px;color:var(--muted);margin-top:3px">負責 ${l.projN} 專案 ＋ ${l.modN} 模塊</div>
+    </div>
+    <div>${(u.skillRoles||[]).map(r=>`<span class="tag" style="background:#eef3e8;color:#5a7a3a">${esc(r)}</span>`).join('')||'<span style="font-size:11px;color:var(--muted)">未設定技能</span>'}</div>
+    <div style="font-size:11px;color:var(--muted)">
+      ${projs.length?'專案：'+projs.map(p=>esc(p.name)).join('、'):''}
+      ${mods.length?'<br>模塊：'+mods.map(m=>esc(m.name)).join('、'):''}</div>
+    ${MEMBER_EDIT?`<div class="cardrow"><button class="btn sm ghost" onclick="editMember('${u.id}')">編輯</button>
+      <button class="btn sm danger" onclick="delEntity('members','${u.id}')">刪除</button></div>`:''}
+  </div>`;
+}
+
+/* ============================================================ MATCHING (智能配對) ============================================================ */
+let MATCH_TAGS=[];
+function renderMatching(){
+  const allCaps=[...new Set(DATA.modules.flatMap(m=>m.caps||[]))].sort();
+  document.getElementById('view').innerHTML=`
+    <div class="section-title">🎯 智能配對 <span class="count">新專案來臨：能用什麼模塊？派誰最適合？</span></div>
+    <div class="card">
+      <div class="field"><label>方式 1：選擇現有專案，沿用其需求</label>
+        <select id="matchProj" onchange="pickProjectNeeds()"><option value="">— 不選，自行勾選需求 —</option>
+          ${DATA.projects.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('')}</select></div>
+      <div class="field"><label>方式 2：勾選此專案需要的「能力」</label>
+        <div class="pill-sel" id="capPills">${allCaps.map(c=>`<div class="p" onclick="toggleTag('${esc(c)}',this)">${esc(c)}</div>`).join('')}</div>
+        <div class="hint">能力標籤來自各技術模塊；可在「技術模塊」分頁維護。</div></div>
+      <button class="btn" onclick="runMatch()">開始配對</button>
+    </div>
+    <div id="matchResult" class="match-result"></div>`;
+  MATCH_TAGS=[];
+}
+function toggleTag(t,el){ const i=MATCH_TAGS.indexOf(t); if(i>=0){MATCH_TAGS.splice(i,1);el.classList.remove('on');}else{MATCH_TAGS.push(t);el.classList.add('on');} }
+function pickProjectNeeds(){
+  const id=document.getElementById('matchProj').value; MATCH_TAGS=[];
+  document.querySelectorAll('#capPills .p').forEach(e=>e.classList.remove('on'));
+  if(id){ const p=proj(id); (p.needs||[]).forEach(t=>{ MATCH_TAGS.push(t);
+    document.querySelectorAll('#capPills .p').forEach(e=>{ if(e.textContent===t) e.classList.add('on'); }); }); }
+}
+function runMatch(){
+  const out=document.getElementById('matchResult');
+  if(!MATCH_TAGS.length){ out.innerHTML='<div class="empty">請先選一個專案或勾選需要的能力。</div>'; return; }
+  // match modules by overlapping caps
+  const scored=DATA.modules.map(m=>{ const hit=(m.caps||[]).filter(c=>MATCH_TAGS.includes(c)); return {m,hit,score:hit.length}; })
+    .filter(x=>x.score>0).sort((a,b)=> b.score-a.score || b.m.progress-a.m.progress);
+  // candidate members: owners of matched modules + members whose skills include matched modules; rank by capacity
+  const matchedModuleIds=scored.map(x=>x.m.id);
+  const candMap={};
+  DATA.members.forEach(u=>{
+    const ownerOf=DATA.modules.filter(m=>matchedModuleIds.includes(m.id)&&(m.ownerIds||[]).includes(u.id));
+    const skillOf=(u.skillModuleIds||[]).filter(id=>matchedModuleIds.includes(id));
+    const relevance=new Set([...ownerOf.map(m=>m.id),...skillOf]).size;
+    if(relevance>0){ const l=memberLoad(u.id); const cap=u.capPct||100; const free=cap-l.total;
+      // 綜合分數：專長相關度(每點約等於20%餘力) + 餘力%(超載者free為負，自動扣分)
+      const composite=relevance*20+free;
+      candMap[u.id]={u,relevance,load:l,cap,free,composite}; }
+  });
+  const cands=Object.values(candMap).sort((a,b)=> b.composite-a.composite || b.relevance-a.relevance);
+
+  out.innerHTML=`
+    <div class="section-title">① 可用技術模塊 <span class="count">依命中能力數 / 成熟度排序</span></div>
+    <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(280px,1fr))">
+      ${scored.length?scored.map(x=>`<div class="card pcard" style="border-left-color:${catColor(x.m.category)}">
+        <div class="top"><div class="name">${esc(x.m.name)}</div>${x.m.progress>=100?'<span class="badge ok">可量產</span>':x.m.status==='New'?'<span class="badge new">開發中</span>':'<span class="badge ok">'+x.m.progress+'%</span>'}</div>
+        <div style="margin:6px 0">命中：${x.hit.map(h=>`<span class="tag">${esc(h)}</span>`).join('')}</div>
+        <div class="pbar"><span style="width:${x.m.progress}%"></span></div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">成熟度 ${x.m.progress}%｜${esc(x.m.phase||'')}</div></div>`).join('')
+        :'<div class="empty">沒有對應的技術模塊 → 可能是全新技術，需評估開發。</div>'}
+    </div>
+    <div class="section-title" style="margin-top:24px">② 推薦 PM <span class="count">綜合分數排序（專長相關度 × 餘力）</span></div>
+    <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(280px,1fr))">
+      ${cands.length?cands.map((c,i)=>`<div class="card" style="border-left:5px solid ${c.free>0?'var(--green)':'var(--warn)'}">
+        <div class="top"><div><div class="name">${i===0?'⭐ ':''}${esc(c.u.name)}</div><div class="meta">${esc(c.u.title||'')}</div></div>
+          <span class="badge ${c.free>0?'ok':'warn'}">綜合 ${c.composite.toFixed(1)}</span></div>
+        <div style="font-size:12px;margin-top:6px">專長相關度 <b>${c.relevance}</b>　餘力 <b style="color:${c.free>0?'var(--green)':'var(--warn)'}">${c.free}%</b></div>
+        <div style="font-size:11px;color:var(--muted)">目前 Loading ${c.load.total}%/${c.cap}%（${c.load.projN}專案+${c.load.modN}模塊）</div></div>`).join('')
+        :'<div class="empty">沒有具相關專長的成員 → 需培訓或外部資源。</div>'}
+    </div>`;
+}
+
+/* ============================================================ EDIT FORMS ============================================================ */
+/* ===== 部門識別：顯示標題 + 識別色主題（v3，為未來集團總覽鋪路）===== */
+function deptName(){ return (DATA.department&&DATA.department.name)||(DATA.meta&&DATA.meta.title)||'部門指揮中心'; }
+function hexRgb(h){ h=(h||'').replace('#',''); if(h.length===3)h=h.split('').map(x=>x+x).join(''); const n=parseInt(h||'2f6fd0',16); return {r:(n>>16)&255,g:(n>>8)&255,b:n&255}; }
+function shadeHex(h,f){ const c=hexRgb(h); const m=v=>Math.max(0,Math.min(255,Math.round(v*f))); return '#'+[m(c.r),m(c.g),m(c.b)].map(x=>x.toString(16).padStart(2,'0')).join(''); }
+function applyDeptTheme(){
+  const c=(DATA.department&&DATA.department.color)||'#2f6fd0';
+  const dk=shadeHex(c,.62), rs=document.documentElement.style;
+  rs.setProperty('--blue',dk); rs.setProperty('--blue2',c);
+  const rgb=hexRgb(c), drgb=hexRgb(dk), h=document.querySelector('header');
+  if(h) h.style.background=`linear-gradient(120deg,rgba(${drgb.r},${drgb.g},${drgb.b},.82),rgba(${rgb.r},${rgb.g},${rgb.b},.74))`;
+}
+function renderTitle(){ const nm=deptName(); const code=(DATA.department&&DATA.department.code)||''; const el=document.getElementById('appTitle'); if(el) el.innerHTML=esc(nm)+(code?` <span style="font-weight:600;opacity:.8;font-size:.82em">${esc(code)}</span>`:''); const vb=document.getElementById('appVer'); if(vb) vb.textContent=(DATA.meta&&DATA.meta.version)||'v3.0'; document.title=nm+(code?` (${code})`:'')+' | 指揮中心'; applyDeptTheme(); }
+function showDeptSetup(first){
+  const d=DATA.department||{};
+  openModal(`<h3>${first?'建立你的指揮中心':'部門設定'}</h3>
+    ${first?'<div class="hint" style="margin-bottom:10px">歡迎！先設定你的部門識別，這會成為這個指揮中心的名稱與識別色，並隨你的資料一起雲端同步。</div>':''}
+    <div class="field"><label>部門名稱（顯示為標題）<span style="color:var(--warn)">*</span></label><input id="d_name" value="${esc(d.name||'')}" placeholder="如：Mobility 指揮中心"></div>
+    <div class="field"><label>部門代碼（英數，未來彙整用）</label><input id="d_code" value="${esc(d.code||'')}" placeholder="如：MOB"></div>
+    <div class="field"><label>識別色</label><input id="d_color" type="color" value="${d.color||'#2f6fd0'}" style="width:64px;height:38px;padding:2px" oninput="document.documentElement.style.setProperty('--blue2',this.value)"></div>
+    <div class="field"><label>負責主管</label><input id="d_manager" value="${esc(d.manager||'')}" placeholder="如：Johnny Yang"></div>
+    <div class="field"><label>聯絡 Email</label><input id="d_email" value="${esc(d.email||'')}" placeholder="如：name@auo.com"></div>
+    <div class="hint">識別色會套用到標題列與重點色。代碼建議用簡短英數，未來集團總覽會用它區分部門。</div>
+    <div class="modal-foot">${first?'<button class="btn ghost" style="margin-right:auto" onclick="skipDeptSetup()">稍後設定</button>':'<button class="btn ghost" onclick="closeModal()">取消</button>'}<button class="btn" onclick="saveDeptSetup()">儲存</button></div>`);
+  setTimeout(()=>{ const i=document.getElementById('d_name'); if(i){ i.focus(); i.select(); } },50);
+}
+function saveDeptSetup(){
+  const name=(document.getElementById('d_name').value||'').trim();
+  if(!name){ alert('請至少填寫部門名稱'); return; }
+  if(!DATA.department) DATA.department={};
+  const dp=DATA.department;
+  if(!dp.id) dp.id=uid('dept');
+  dp.name=name;
+  dp.code=(document.getElementById('d_code').value||'').trim();
+  dp.color=document.getElementById('d_color').value||'#2f6fd0';
+  dp.manager=(document.getElementById('d_manager').value||'').trim();
+  dp.email=(document.getElementById('d_email').value||'').trim();
+  DATA.meta.title=name; DATA.meta.setup=true;
+  save(); renderTitle(); closeModal();
+}
+function skipDeptSetup(){ DATA.meta.setup=true; save(); closeModal(); }
+function showAbout(){ const ver=(DATA.meta&&DATA.meta.version)||'v3.0'; const verDate='2026-06-14'; const upd=(DATA.meta&&DATA.meta.updated)||''; const d=DATA.department||{}; const hasMgr=!!(d.manager||d.email); openModal(`<h2 style="margin:0 0 14px">關於本平台</h2>
+  <div style="line-height:1.9;font-size:14px">
+    <div style="font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.5px">部門資訊</div>
+    <div><b style="font-size:15px">${esc(deptName())}</b></div>
+    ${d.code?`<div>部門代碼：<b>${esc(d.code)}</b></div>`:''}
+    <div>本部門管理者：${hasMgr?`<b>${esc(d.manager||'—')}</b>${d.email?` · <a href="mailto:${esc(d.email)}">${esc(d.email)}</a>`:''}`:`<span style="color:var(--muted)">尚未設定（點下方「部門設定」填寫）</span>`}</div>
+    <div>資料最後更新：<b>${esc(upd||'—')}</b></div>
+
+    <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--glass-line)">
+      <div style="font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.5px">平台資訊</div>
+      <div>平台版本：<b>${esc(ver)}</b> <span style="color:var(--muted)">（多部門版・iOS 液態玻璃介面）</span></div>
+      <div>版本發佈日：<b>${esc(verDate)}</b></div>
+      <div>平台負責人：<b>Johnny Yang</b> · <a href="mailto:johnny.yang@auo.com">johnny.yang@auo.com</a></div>
+    </div>
+  </div>
+  <div class="modal-foot"><button class="btn ghost" style="margin-right:auto" onclick="closeModal();showDeptSetup(false)">部門設定</button><button class="btn" onclick="closeModal()">關閉</button></div>`); }
+/* ============ 介面外觀設定（iOS 液態玻璃微調）============ */
+const UI_KEY='managerPlatformUI_v1';
+const UI_DEFAULT={blur:28, sat:205, glassA:.52, glassB:.7, rscale:1};
+let UICFG = loadUICfg();
+function loadUICfg(){ try{ return Object.assign({},UI_DEFAULT,JSON.parse(localStorage.getItem(UI_KEY))||{}); }catch(e){ return Object.assign({},UI_DEFAULT); } }
+function applyUICfg(){ const s=document.documentElement.style; s.setProperty('--ui-blur',UICFG.blur+'px'); s.setProperty('--ui-sat',UICFG.sat+'%'); s.setProperty('--ui-glassA',UICFG.glassA); s.setProperty('--ui-glassB',UICFG.glassB); s.setProperty('--ui-rscale',UICFG.rscale); }
+function saveUICfg(){ localStorage.setItem(UI_KEY, JSON.stringify(UICFG)); }
+function uiSet(k,v){ UICFG[k]=+v; applyUICfg(); saveUICfg(); const el=document.getElementById('ui_'+k+'_val'); if(el) el.textContent=uiFmt(k,v); }
+function uiFmt(k,v){ if(k==='glassA'||k==='glassB') return Math.round((1-(+v))*100)+'%'; if(k==='rscale') return Math.round(v*100)+'%'; if(k==='sat') return Math.round(v)+'%'; return Math.round(v)+'px'; }
+function uiPreset(name){ const p={ 淡:{blur:14,sat:160,glassA:.7,glassB:.84,rscale:.9}, 標準:{blur:28,sat:205,glassA:.52,glassB:.7,rscale:1}, 強烈:{blur:42,sat:240,glassA:.34,glassB:.54,rscale:1.15} }[name]; if(!p) return; UICFG=Object.assign({},p); applyUICfg(); saveUICfg(); showUISettings(); }
+function resetUICfg(){ UICFG=Object.assign({},UI_DEFAULT); applyUICfg(); saveUICfg(); showUISettings(); }
+function showUISettings(){
+  const c=UICFG;
+  const row=(k,label,min,max,step)=>`<div class="field"><label style="display:flex;justify-content:space-between"><span>${label}</span><b id="ui_${k}_val" style="color:var(--blue)">${uiFmt(k,c[k])}</b></label><input type="range" min="${min}" max="${max}" step="${step}" value="${c[k]}" oninput="uiSet('${k}',this.value)" style="height:auto;padding:0"></div>`;
+  openModal(`<h3>⚙️ 介面外觀設定（iOS 液態玻璃）</h3>
+    <div class="hint" style="margin-bottom:12px">拖曳即時預覽，設定會自動存在本機瀏覽器。</div>
+    <div class="field"><label>快速套用</label><div class="pill-sel">
+      <span class="p" onclick="uiPreset('淡')">淡</span>
+      <span class="p" onclick="uiPreset('標準')">標準</span>
+      <span class="p" onclick="uiPreset('強烈')">強烈</span>
+    </div></div>
+    ${row('blur','玻璃模糊強度',6,60,1)}
+    ${row('sat','色彩飽和度',120,260,1)}
+    ${row('glassB','卡片通透感（越高越透）',.3,.92,.01)}
+    ${row('glassA','背景層通透感（越高越透）',.3,.92,.01)}
+    ${row('rscale','圓角大小',.6,1.5,.05)}
+    <div class="modal-foot"><button class="btn ghost" onclick="resetUICfg()">↺ 還原預設</button><button class="btn" onclick="closeModal()">完成</button></div>`);
+}
+function openModal(html){ document.getElementById('modalBox').innerHTML=html; document.getElementById('modalBg').classList.add('show'); }
+function closeModal(){ document.getElementById('modalBg').classList.remove('show'); }
+document.getElementById('modalBg').addEventListener('click',e=>{ if(e.target.id==='modalBg') closeModal(); });
+
+function checkboxGrid(name, options, selected){ // options:[{id,label}]
+  return `<div class="checkbox-grid">${options.map(o=>`<label><input type="checkbox" name="${name}" value="${o.id}" ${selected.includes(o.id)?'checked':''}> ${esc(o.label)}</label>`).join('')}</div>`;
+}
+function getChecked(name){ return [...document.querySelectorAll(`input[name="${name}"]:checked`)].map(e=>e.value); }
+// 功能別成員勾選區（光學/機構/電控/平台/演算法/FAE）— 與成員「擅長功能別」連動
+// 擅長此功能別者標 ⭐ 並排前面；其餘成員淡化但仍可勾選（保留彈性）
+function roleCheckboxGrid(name, role, selected){
+  const sel=selected||[];
+  const list=DATA.members.map(m=>({ id:m.id, label:m.name, skilled:(m.skillRoles||[]).includes(role) }))
+    .sort((a,b)=>(b.skilled-a.skilled) || a.label.localeCompare(b.label,'zh-Hant'));
+  return `<div class="checkbox-grid">${list.map(o=>`<label style="${o.skilled?'':'opacity:.5'}"><input type="checkbox" name="${name}" value="${o.id}" ${sel.includes(o.id)?'checked':''}> ${o.skilled?'⭐ ':''}${esc(o.label)}</label>`).join('')}</div>`;
+}
+function roleMemberFields(prefix, obj, label){
+  const rm=obj.roleMembers||{};
+  return `<div class="field"><label>${label}</label>
+    <div class="hint" style="margin:-4px 0 6px">⭐ = 該成員具備此技能（依「團隊成員」設定排序在前）；淡色為無此技能者，仍可指派。</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      ${FUNC_ROLES.map((r,i)=>`<div style="background:#f4f7fc;border-radius:6px;padding:6px 8px">
+        <div style="font-size:12px;font-weight:700;color:var(--blue);margin-bottom:3px">${r}</div>
+        ${roleCheckboxGrid(prefix+i, r, rm[r]||[])}</div>`).join('')}
+    </div></div>`;
+}
+function collectRoleMembers(prefix){ const o={}; FUNC_ROLES.forEach((r,i)=>{ const ids=getChecked(prefix+i); if(ids.length) o[r]=ids; }); return o; }
+
+let EDIT_STATIONS=[];
+function editProject(id){
+  const p = id?proj(id):{id:uid('p'),name:'',group:'XM',customer:'',phase:'',progress:0,eta:'',status:'正常',needs:[],moduleIds:[],memberIds:[],headcount:0,benefit:0,gains:'',stations:[]};
+  EDIT_STATIONS=(p.stations||[]).map(st=>{ const srm=st.roleMembers||{}; return {id:st.id||uid('st'),name:st.name||'',progress:+st.progress||0,eta:st.eta||'',benefit:+st.benefit||0,moduleIds:[...(st.moduleIds||[])],ownerIds:[...(st.ownerIds||[])],roles:Array.isArray(st.roles)&&st.roles.length?[...st.roles]:Object.keys(srm),roleMembers:JSON.parse(JSON.stringify(srm))}; });
+  openModal(`<h3>${id?'編輯':'新增'}專案</h3>
+    <div class="field"><label>專案名稱</label><input id="f_name" value="${esc(p.name)}"></div>
+    <div class="row"><div class="field" style="flex:1"><label>線體群組／廠區</label><select id="f_group" onchange="groupSelectChange(this)">${DATA.groups.map(gr=>`<option value="${gr.id}" ${p.group===gr.id?'selected':''}>${esc(gr.name)}</option>`).join('')}<option value="__new__">＋ 新增廠區…</option></select></div>
+      <div class="field" style="flex:1"><label>客戶</label><input id="f_customer" value="${esc(p.customer)}"></div></div>
+    <div class="field"><label>目前階段</label><input id="f_phase" value="${esc(p.phase)}"></div>
+    <div class="row"><div class="field" style="flex:1"><label>進度 %</label><input id="f_progress" type="number" min="0" max="100" value="${p.progress||0}" oninput="refreshAutoStatus()"><div class="hint" id="f_progressHint" style="display:none">有 AOI 站點時，線進度＝各站平均自動計算</div></div>
+      <div class="field" style="flex:1"><label>預計完成日</label><input id="f_eta" type="date" value="${toDateInput(p.eta)}" onchange="refreshAutoStatus()"></div>
+      <div class="field" style="flex:1"><label>狀態（自動）</label><div id="f_statusAuto" style="padding:7px 0">—</div><div class="hint">依進度與預計日自動判定</div></div></div>
+    <div class="row" style="background:#f4f7fc;border-radius:8px;padding:10px 10px 0;margin-bottom:12px">
+      <div class="field" style="flex:1"><label>重要性權重</label><input id="f_weight" type="number" min="0" step="0.1" value="${p.weight==null?1:p.weight}"><div class="hint">數值越大越重要，放大成員投入工時（預設 1）</div></div>
+      <div class="field" style="flex:1.4"><label style="white-space:nowrap">投入人數（等效人力）</label><div style="font-size:20px;font-weight:800;color:var(--blue);padding:6px 0;white-space:nowrap">${Math.round(projFTE(p)*10)/10} 人</div><div class="hint">自動依成員角色工時%加總換算，無需手動填寫</div></div>
+      <div class="field" style="flex:1"><label>產出效益（萬元/年）</label><input id="f_benefit" type="number" min="0" value="${+p.benefit||0}"><div class="hint">量化年效益金額</div><div class="hint" id="f_benefitHint" style="display:none">有 AOI 站點時，效益＝各站效益加總自動計算</div></div>
+      <div class="field" style="flex:2"><label>效益內容</label><input id="f_gains" value="${esc(p.gains||'')}"><div class="hint">如：省2人, Cost↓15%, TT↓43%</div></div></div>
+    <div class="field"><label>需求能力（逗號分隔，供配對用）</label><input id="f_needs" value="${esc((p.needs||[]).join(', '))}"></div>
+    <div class="field"><label>專案 Leader（PM）</label><div class="hint" style="margin:-4px 0 6px">只設定專案負責人；技術模塊與各功能別工程師在下方「AOI 站點」依站指派。</div>${checkboxGrid('f_mems',DATA.members.map(m=>({id:m.id,label:m.name})),p.memberIds||[])}</div>
+    <div class="field"><label>AOI 站點（站點成員與功能別在此設定）</label>
+      <div class="hint" style="margin-bottom:6px">每一站可有不同進度／模塊／站長／投入功能別與成員；填了站點後，本線進度＝各站平均自動計算。</div>
+      <div id="stationsBox"></div>
+      <button type="button" class="btn sm ghost" style="margin-top:6px" onclick="addStation()">＋ 新增站點</button></div>
+    <div class="modal-foot"><button class="btn ghost" onclick="closeModal()">取消</button><button class="btn" onclick="saveProject('${p.id}',${!!id})">儲存</button></div>`);
+  rerenderStations();
+  refreshAutoStatus();
+}
+function stationsEditorHTML(){
+  if(!EDIT_STATIONS.length) return '<div style="font-size:12px;color:var(--muted);padding:6px 0">（尚無站點，點下方按鈕新增）</div>';
+  return EDIT_STATIONS.map((st,i)=>{
+    const roles=st.roles||[];
+    const roleBlocks=roles.map(r=>{ const ri=FUNC_ROLES.indexOf(r); if(ri<0) return '';
+      return `<div style="background:#fff;border-radius:6px;padding:6px 8px;margin-top:6px">
+        <div style="font-size:12px;font-weight:700;color:var(--blue);margin-bottom:3px">${r}</div>
+        ${roleCheckboxGrid('st_rm_'+i+'_'+ri, r, (st.roleMembers||{})[r]||[])}</div>`;}).join('');
+    return `<div style="background:#f4f7fc;border-radius:8px;padding:10px;margin-bottom:8px">
+    <div class="row" style="align-items:flex-end">
+      <div class="field" style="flex:2;margin-bottom:0"><label>站名</label><input value="${esc(st.name)}" oninput="stationField(${i},'name',this.value)" placeholder="例：ST1 上料/3D量測"></div>
+      <div class="field" style="flex:1;margin-bottom:0"><label>進度 %</label><input type="number" min="0" max="100" value="${st.progress}" oninput="stationField(${i},'progress',this.value)"></div>
+      <div class="field" style="flex:1.2;margin-bottom:0"><label>預計完成</label><input type="date" value="${toDateInput(st.eta)}" onchange="stationField(${i},'eta',fromDateInput(this.value))"></div>
+      <div class="field" style="flex:1;margin-bottom:0"><label>效益(萬/年)</label><input type="number" min="0" value="${+st.benefit||0}" oninput="stationField(${i},'benefit',this.value)"></div>
+      <button type="button" class="btn sm danger" style="margin-bottom:2px" onclick="removeStation(${i})">刪除</button></div>
+    <div class="field" style="margin:8px 0 0"><label>使用模塊</label>${checkboxGrid('st_mod_'+i,DATA.modules.map(m=>({id:m.id,label:m.name})),st.moduleIds)}</div>
+    <div class="field" style="margin:8px 0 0"><label>站長（站點負責人）</label>${checkboxGrid('st_own_'+i,DATA.members.map(m=>({id:m.id,label:m.name})),st.ownerIds)}</div>
+    <div class="field" style="margin:8px 0 0"><label>投入功能別</label>
+      <div class="checkbox-grid">${FUNC_ROLES.map(r=>`<label><input type="checkbox" ${roles.includes(r)?'checked':''} onchange="toggleStationRole(${i},'${r}',this.checked)"> ${r}</label>`).join('')}</div>
+      ${roles.length?roleBlocks:'<div class="hint" style="margin-top:4px">勾選需要投入的功能別後，會列出該功能別的成員供指派（⭐＝具備該技能，排序在前）。</div>'}
+    </div>
+  </div>`;}).join('');
+}
+function syncStationsFromDOM(){
+  EDIT_STATIONS.forEach((st,i)=>{
+    if(document.querySelector('input[name="st_mod_'+i+'"]')) st.moduleIds=getChecked('st_mod_'+i);
+    if(document.querySelector('input[name="st_own_'+i+'"]')) st.ownerIds=getChecked('st_own_'+i);
+    const srm={}; (st.roles||[]).forEach(r=>{ const ri=FUNC_ROLES.indexOf(r); if(ri<0) return; const ids=getChecked('st_rm_'+i+'_'+ri); if(ids.length) srm[r]=ids; });
+    st.roleMembers=srm;
+  });
+}
+function toggleStationRole(i, role, checked){ syncStationsFromDOM(); const st=EDIT_STATIONS[i]; if(!st) return; st.roles=st.roles||[]; if(checked){ if(!st.roles.includes(role)) st.roles.push(role); } else { st.roles=st.roles.filter(r=>r!==role); if(st.roleMembers) delete st.roleMembers[role]; } rerenderStations(); }
+function stationField(i,k,v){ if(EDIT_STATIONS[i]) EDIT_STATIONS[i][k]=((k==='progress'||k==='benefit')?(+v||0):v); if(k==='progress') recalcLineProgress(); if(k==='benefit') recalcLineBenefit(); }
+function recalcLineProgress(){ const pf=document.getElementById('f_progress'); if(pf&&EDIT_STATIONS.length){ pf.value=Math.round(EDIT_STATIONS.reduce((a,s)=>a+(+s.progress||0),0)/EDIT_STATIONS.length); } refreshAutoStatus(); }
+function recalcLineBenefit(){ const bf=document.getElementById('f_benefit'); if(bf&&EDIT_STATIONS.length){ bf.value=EDIT_STATIONS.reduce((a,s)=>a+(+s.benefit||0),0); } }
+function addStation(){ syncStationsFromDOM(); EDIT_STATIONS.push({id:uid('st'),name:'',progress:0,eta:'',benefit:0,moduleIds:[],ownerIds:[],roles:[],roleMembers:{}}); rerenderStations(); }
+function removeStation(i){ syncStationsFromDOM(); EDIT_STATIONS.splice(i,1); rerenderStations(); }
+function rerenderStations(){ const box=document.getElementById('stationsBox'); if(box) box.innerHTML=stationsEditorHTML(); const has=EDIT_STATIONS.length>0; const pf=document.getElementById('f_progress'), hint=document.getElementById('f_progressHint'); if(pf){ pf.disabled=has; if(has){ pf.value=Math.round(EDIT_STATIONS.reduce((a,s)=>a+(+s.progress||0),0)/EDIT_STATIONS.length); } if(hint) hint.style.display=has?'block':'none'; } const bf=document.getElementById('f_benefit'), bhint=document.getElementById('f_benefitHint'); if(bf){ bf.disabled=has; if(has){ bf.value=EDIT_STATIONS.reduce((a,s)=>a+(+s.benefit||0),0); } if(bhint) bhint.style.display=has?'block':'none'; } refreshAutoStatus(); }
+function refreshAutoStatus(){
+  const el=document.getElementById('f_statusAuto'); if(!el) return;
+  const s=autoStatus({progress:+val('f_progress')||0, eta:val('f_eta')});
+  el.innerHTML=`<span class="badge ${s.cls}">${s.icon} ${s.label}</span>${s.note?`<span style="font-size:11px;color:var(--muted);margin-left:6px">${esc(s.note)}</span>`:''}`;
+}
+function saveProject(pid,exists){
+  syncStationsFromDOM();
+  const orig=exists?proj(pid):null;
+  const stations=EDIT_STATIONS.filter(s=>s.name||s.moduleIds.length||s.ownerIds.length||(s.roles||[]).length||+s.benefit).map(s=>({id:s.id||uid('st'),name:s.name,progress:+s.progress||0,eta:s.eta||'',benefit:+s.benefit||0,moduleIds:[...s.moduleIds],ownerIds:[...s.ownerIds],roles:[...(s.roles||[])],roleMembers:JSON.parse(JSON.stringify(s.roleMembers||{}))}));
+  const o={ id:pid, name:val('f_name'), group:val('f_group'), customer:val('f_customer'), phase:val('f_phase'),
+    progress:+val('f_progress')||0, eta:fromDateInput(val('f_eta')),
+    headcount:0, benefit:+val('f_benefit')||0, gains:val('f_gains'), weight:+val('f_weight')||1,
+    needs:val('f_needs').split(/[,，]/).map(s=>s.trim()).filter(Boolean), moduleIds:(orig?orig.moduleIds||[]:[]), memberIds:getChecked('f_mems'), roleMembers:(orig?orig.roleMembers||{}:{}), stations };
+  if(stations.length){ o.progress=projProgress(o); o.benefit=projBenefit(o); }
+  o.status=autoStatus({progress:projProgress(o),eta:o.eta}).label; // 自動判定後存入，供匯出/相容
+  if(!o.name){ alert('請輸入專案名稱'); return; }
+  if(exists){ const i=DATA.projects.findIndex(x=>x.id===pid); DATA.projects[i]=o; } else DATA.projects.push(o);
+  save(); closeModal(); render();
+}
+function editGroup(id){
+  const gr = id?DATA.groups.find(x=>x.id===id):{id:uid('g'),name:'',color:'#5b8def'};
+  openModal(`<h3>${id?'編輯':'新增'}廠區／線體群組</h3>
+    <div class="field"><label>名稱</label><input id="f_gname" value="${esc(gr.name)}" placeholder="例：TW M01"></div>
+    <div class="field"><label>代表色</label><input id="f_gcolor" type="color" value="${gr.color||'#5b8def'}" style="width:64px;height:38px;padding:2px"></div>
+    <div class="modal-foot"><button class="btn ghost" onclick="closeModal()">取消</button><button class="btn" onclick="saveGroup('${gr.id}',${!!id})">儲存</button></div>`);
+}
+function saveGroup(gid,exists){
+  const o={ id:gid, name:val('f_gname'), color:val('f_gcolor')||'#5b8def' };
+  if(!o.name){ alert('請輸入廠區名稱'); return; }
+  if(exists){ const i=DATA.groups.findIndex(x=>x.id===gid); DATA.groups[i]=o; } else DATA.groups.push(o);
+  save(); closeModal(); render();
+}
+function delGroup(id){
+  const gn=(g(id).name)||'此廠區';
+  const n=DATA.projects.filter(p=>p.group===id).length;
+  if(!confirm(`確定刪除廠區「${gn}」？${n?`其下 ${n} 個專案將歸為「未分類」，可再重新指派。`:''}\n（刪除後可按下方「復原」按鈕還原）`)) return;
+  snapshotUndo(gn);
+  DATA.groups=DATA.groups.filter(x=>x.id!==id);
+  save(); render(); showUndoToast(gn);
+}
+function editRoadmapItem(id){
+  const it = id?DATA.roadmapItems.find(x=>x.id===id):{id:uid('r'),pillar:(DATA.pillars[0]||{}).id,year:ROADMAP_YEARS[0],title:'',projectIds:[],moduleIds:[]};
+  const curP = pil(it.pillar) || DATA.pillars[0] || {};
+  const curDomain = curP.domain || ROADMAP_DOMAINS[0];
+  openModal(`<h3>${id?'編輯':'新增'} Roadmap 項目</h3>
+    <div class="field"><label>項目名稱</label><input id="f_title" value="${esc(it.title)}"></div>
+    <div class="row">
+      <div class="field" style="flex:1"><label>領域 (Pillar)</label><select id="f_domain" onchange="roadmapDomainChange()">${ROADMAP_DOMAINS.map(d=>`<option ${curDomain===d?'selected':''}>${d}</option>`).join('')}</select></div>
+      <div class="field" style="flex:2"><label>技術平台</label><select id="f_pillar" onchange="roadmapPillarChange()"></select></div>
+      <div class="field" style="flex:1"><label>年度</label><select id="f_year">${ROADMAP_YEARS.map(y=>`<option ${it.year===y?'selected':''}>${y}</option>`).join('')}</select></div>
+    </div>
+    <div class="field"><label>連結專案</label>${checkboxGrid('f_rprojs',DATA.projects.map(p=>({id:p.id,label:p.name})),it.projectIds||[])}</div>
+    <div class="field"><label>連結技術模塊</label>${checkboxGrid('f_rmods',DATA.modules.map(m=>({id:m.id,label:m.name})),it.moduleIds||[])}</div>
+    <div class="modal-foot"><button class="btn ghost" onclick="closeModal()">取消</button><button class="btn" onclick="saveRoadmapItem('${it.id}',${!!id})">儲存</button></div>`);
+  roadmapDomainChange(it.pillar);
+}
+function roadmapDomainChange(presetPillarId){
+  const dom = val('f_domain');
+  const sel = document.getElementById('f_pillar');
+  const pls = DATA.pillars.filter(p=>p.domain===dom);
+  const existNames = new Set(pls.map(p=>p.name));
+  const cats = (DATA.moduleCats||[]).map(c=>c.name).filter(n=>!existNames.has(n));
+  let opts = pls.map(p=>`<option value="${p.id}" ${presetPillarId===p.id?'selected':''}>${esc(p.name)}</option>`).join('');
+  opts += cats.map(n=>`<option value="cat:${esc(n)}">${esc(n)}（技術模塊分類）</option>`).join('');
+  opts += `<option value="__new__">＋ 新增技術平台…</option>`;
+  sel.innerHTML = opts;
+}
+function roadmapPillarChange(){
+  const sel = document.getElementById('f_pillar');
+  if(sel.value==='__new__'){
+    const name=(prompt('輸入新的技術平台名稱（例如：3D量測平台）')||'').trim();
+    if(name){
+      const opt=document.createElement('option');
+      opt.value='new:'+name; opt.textContent=name+'（新）';
+      sel.insertBefore(opt, sel.options[sel.options.length-1]);
+      sel.value='new:'+name;
+    } else { sel.selectedIndex=0; }
+  }
+}
+function saveRoadmapItem(rid,exists){
+  const title=val('f_title');
+  if(!title){ alert('請輸入項目名稱'); return; }
+  const dom=val('f_domain');
+  const pillarVal=val('f_pillar');
+  if(!pillarVal || pillarVal==='__new__'){ alert('請選擇或新增技術平台'); return; }
+  let pillarId;
+  if(pillarVal.indexOf('cat:')===0 || pillarVal.indexOf('new:')===0){
+    const name=pillarVal.slice(4);
+    let p=DATA.pillars.find(x=>x.domain===dom && x.name===name);
+    if(!p){ p={id:uid('pl'),domain:dom,name:name}; DATA.pillars.push(p); }
+    pillarId=p.id;
+  } else { pillarId=pillarVal; }
+  const o={ id:rid, title:title, pillar:pillarId, year:val('f_year'), projectIds:getChecked('f_rprojs'), moduleIds:getChecked('f_rmods') };
+  if(exists){ const i=DATA.roadmapItems.findIndex(x=>x.id===rid); DATA.roadmapItems[i]=o; } else DATA.roadmapItems.push(o);
+  save(); closeModal(); render();
+}
+
+function editModule(id){
+  const m = id?mod(id):{id:uid('m'),name:'',category:((DATA.moduleCats||[])[0]||{}).name||'未分類',progress:0,phase:'',eta:'',status:'正常',caps:[],ownerIds:[]};
+  const cats=[...new Set([...(DATA.moduleCats||[]).map(c=>c.name), ...DATA.modules.map(x=>x.category)])];
+  openModal(`<h3>${id?'編輯':'新增'}技術模塊</h3>
+    <div class="field"><label>模塊名稱</label><input id="f_name" value="${esc(m.name)}"></div>
+    <div class="row"><div class="field" style="flex:1"><label>分類</label><select id="f_cat" onchange="catSelectChange(this)">${cats.map(c=>`<option value="${esc(c)}" ${m.category===c?'selected':''}>${esc(c)}</option>`).join('')}<option value="__new__">＋ 新增分類…</option></select></div>
+      <div class="field" style="flex:1"><label>狀態</label><select id="f_status"><option ${m.status==='正常'?'selected':''}>正常</option><option ${m.status==='New'?'selected':''}>New</option></select></div></div>
+    <div class="field"><label>目前階段</label><input id="f_phase" value="${esc(m.phase)}"></div>
+    <div class="row"><div class="field" style="flex:1"><label>進度 %</label><input id="f_progress" type="number" min="0" max="100" value="${m.progress}"></div>
+      <div class="field" style="flex:1"><label>預計完成日</label><input id="f_eta" type="date" value="${toDateInput(m.eta)}"></div>
+      <div class="field" style="flex:1"><label>重要性權重</label><input id="f_weight" type="number" min="0" step="0.1" value="${m.weight==null?1:m.weight}"><div class="hint">放大成員投入工時（預設 1）</div></div></div>
+    <div class="field"><label>能力標籤（逗號分隔，供配對用）</label><input id="f_caps" value="${esc((m.caps||[]).join(', '))}"></div>
+    <div class="field"><label>PM（負責人）</label>${checkboxGrid('f_owners',DATA.members.map(u=>({id:u.id,label:u.name})),m.ownerIds||[])}</div>
+    ${roleMemberFields('f_mrole', m, '模塊成員（依功能別）')}
+    <div class="modal-foot"><button class="btn ghost" onclick="closeModal()">取消</button><button class="btn" onclick="saveModule('${m.id}',${!!id})">儲存</button></div>`);
+}
+function catSelectChange(sel){
+  if(sel.value==='__new__'){
+    const v=(prompt('輸入新分類名稱（例：3D量檢測）')||'').trim();
+    if(v){ if(!DATA.moduleCats) DATA.moduleCats=[];
+      if(!DATA.moduleCats.some(c=>c.name===v)){ DATA.moduleCats.push({id:uid('mc'),name:v,color:pickColor(DATA.moduleCats.length)}); save(); }
+      const opt=document.createElement('option'); opt.value=v; opt.textContent=v; sel.insertBefore(opt, sel.lastElementChild); sel.value=v; }
+    else sel.selectedIndex=0;
+  }
+}
+function pickColor(i){ const pal=['#5b8def','#c9852a','#3aab8d','#b3679d','#d9534f','#7e57c2','#e6a23c','#2f6fd0']; return pal[i%pal.length]; }
+// 在「新增專案」視窗內即時新增廠區（建立後選中；可到專案頁標頭 ✎ 改色）
+function groupSelectChange(sel){
+  if(sel.value==='__new__'){
+    const v=(prompt('輸入新廠區名稱（例：TW M01）')||'').trim();
+    if(v){ const o={id:uid('g'),name:v,color:pickColor(DATA.groups.length)}; DATA.groups.push(o); save();
+      const opt=document.createElement('option'); opt.value=o.id; opt.textContent=v; sel.insertBefore(opt, sel.lastElementChild); sel.value=o.id; }
+    else sel.selectedIndex=0;
+  }
+}
+// 在「新增成員」視窗內即時新增團隊
+function titleList(){ const base=['經理','工程經理','副理','工程副理','正工程師','工程師','技師']; const custom=(DATA.jobTitles||[]); return [...new Set([...base,...custom])]; }
+function titleOptions(cur){ const list=titleList().slice(); if(cur&&!list.includes(cur)) list.unshift(cur); return list.map(t=>`<option value="${esc(t)}" ${cur===t?'selected':''}>${esc(t)}</option>`).join(''); }
+function titleSelectChange(sel){
+  if(sel.value==='__new__'){
+    const v=(prompt('輸入新職稱（例：資深工程師）')||'').trim();
+    if(v){ if(!DATA.jobTitles) DATA.jobTitles=[]; if(!titleList().includes(v)) DATA.jobTitles.push(v); save();
+      const opt=document.createElement('option'); opt.value=v; opt.textContent=v; sel.insertBefore(opt, sel.lastElementChild); sel.value=v; }
+    else sel.value='';
+  }
+}
+function teamSelectChange(sel){
+  if(sel.value==='__new__'){
+    const v=(prompt('輸入新團隊名稱（例：3D量檢團隊）')||'').trim();
+    if(v){ const o={id:uid('t'),name:v,color:pickColor(DATA.teams.length)}; DATA.teams.push(o); save();
+      const opt=document.createElement('option'); opt.value=o.id; opt.textContent=v; sel.insertBefore(opt, sel.lastElementChild); sel.value=o.id; }
+    else sel.value='';
+  }
+}
+function saveModule(mid,exists){
+  const o={ id:mid, name:val('f_name'), category:val('f_cat')||'未分類', progress:+val('f_progress')||0, phase:val('f_phase'),
+    eta:fromDateInput(val('f_eta')), status:val('f_status'), weight:+val('f_weight')||1, caps:val('f_caps').split(/[,，]/).map(s=>s.trim()).filter(Boolean), ownerIds:getChecked('f_owners'), roleMembers:collectRoleMembers('f_mrole') };
+  if(!o.name){ alert('請輸入模塊名稱'); return; }
+  if(o.category && o.category!=='未分類'){ if(!DATA.moduleCats) DATA.moduleCats=[];
+    if(!DATA.moduleCats.some(c=>c.name===o.category)) DATA.moduleCats.push({id:uid('mc'),name:o.category,color:pickColor(DATA.moduleCats.length)}); }
+  if(exists){ const i=DATA.modules.findIndex(x=>x.id===mid); DATA.modules[i]=o; } else DATA.modules.push(o);
+  save(); closeModal(); render();
+}
+
+function editMember(id){
+  const u = id?mem(id):{id:uid('u'),name:'',title:'',teamId:(DATA.teams[0]||{}).id||'',skillModuleIds:[],capPct:100};
+  openModal(`<h3>${id?'編輯':'新增'}成員</h3>
+    <div class="row"><div class="field" style="flex:2"><label>姓名</label><input id="f_name" value="${esc(u.name)}"></div>
+      <div class="field" style="flex:1"><label>職稱</label><select id="f_title" onchange="titleSelectChange(this)"><option value="">未設定</option>${titleOptions(u.title)}<option value="__new__">＋ 新增職稱…</option></select></div></div>
+    <div class="row"><div class="field" style="flex:1"><label>所屬團隊</label><select id="f_team" onchange="teamSelectChange(this)"><option value="">未分組</option>${(DATA.teams||[]).map(t=>`<option value="${t.id}" ${u.teamId===t.id?'selected':''}>${esc(t.name)}</option>`).join('')}<option value="__new__">＋ 新增團隊…</option></select></div>
+      <div class="field" style="flex:1"><label>工時上限（%）</label><input id="f_cap" type="number" min="1" value="${u.capPct||100}"><div class="hint">加權投入工時超過此值即超載（預設 100）。</div></div></div>
+    <div class="field"><label>技能（可複選）</label>${checkboxGrid('f_sroles',FUNC_ROLES.map(r=>({id:r,label:r})),u.skillRoles||[])}<div class="hint">此人專精的功能領域（光學/機構/電控/平台/演算法/FAE），供指派角色與智能配對參考。</div></div>
+    <div class="field"><label>技術模塊（可複選）</label>${checkboxGrid('f_skills',DATA.modules.map(m=>({id:m.id,label:m.name})),u.skillModuleIds||[])}</div>
+    <div class="note" style="margin:0">負責的專案 / 模塊請到「專案進度」「技術模塊」分頁指派，Loading 會依角色工時×重要性權重自動計算。</div>
+    <div class="modal-foot"><button class="btn ghost" onclick="closeModal()">取消</button><button class="btn" onclick="saveMember('${u.id}',${!!id})">儲存</button></div>`);
+}
+function saveMember(uid_,exists){
+  const o={ id:uid_, name:val('f_name'), title:val('f_title'), teamId:val('f_team'), capPct:+val('f_cap')||100, skillRoles:getChecked('f_sroles'), skillModuleIds:getChecked('f_skills') };
+  if(!o.name){ alert('請輸入姓名'); return; }
+  if(exists){ const i=DATA.members.findIndex(x=>x.id===uid_); DATA.members[i]=o; } else DATA.members.push(o);
+  save(); closeModal(); render();
+}
+function editRoleWorkload(){
+  const w=DATA.roleWorkload||{};
+  openModal(`<h3>角色基準工時設定</h3>
+    <div class="hint">設定每個角色在「一個重要性權重 = 1 的專案／模塊」中，預估佔用的個人工時%。<br>個人 Loading = Σ（角色基準工時% × 該專案重要性權重），超過工時上限即超載。</div>
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:8px">
+      ${ALL_ROLES.map((r,i)=>`<div class="field" style="margin:0"><label>${r}（%）</label><input id="f_rw${i}" type="number" min="0" value="${+w[r]||0}"></div>`).join('')}
+    </div>
+    <div class="modal-foot"><button class="btn ghost" onclick="closeModal()">取消</button><button class="btn" onclick="saveRoleWorkload()">儲存</button></div>`);
+}
+function saveRoleWorkload(){ const w={}; ALL_ROLES.forEach((r,i)=>{ w[r]=+val('f_rw'+i)||0; }); DATA.roleWorkload=w; save(); closeModal(); render(); }
+function editTeam(id){
+  const t = id?DATA.teams.find(x=>x.id===id):{id:uid('t'),name:'',color:'#2f6fd0'};
+  openModal(`<h3>${id?'編輯':'新增'}團隊</h3>
+    <div class="field"><label>團隊名稱</label><input id="f_tname" value="${esc(t.name)}" placeholder="例：3D量檢團隊"></div>
+    <div class="field"><label>代表色</label><input id="f_tcolor" type="color" value="${t.color||'#2f6fd0'}" style="width:64px;height:38px;padding:2px"></div>
+    <div class="modal-foot"><button class="btn ghost" onclick="closeModal()">取消</button><button class="btn" onclick="saveTeam('${t.id}',${!!id})">儲存</button></div>`);
+}
+function saveTeam(tid,exists){
+  const o={ id:tid, name:val('f_tname'), color:val('f_tcolor')||'#2f6fd0' };
+  if(!o.name){ alert('請輸入團隊名稱'); return; }
+  if(exists){ const i=DATA.teams.findIndex(x=>x.id===tid); DATA.teams[i]=o; } else DATA.teams.push(o);
+  save(); closeModal(); render();
+}
+function delTeam(id){
+  const tn=((DATA.teams||[]).find(x=>x.id===id)||{}).name||'此團隊';
+  const n=DATA.members.filter(u=>u.teamId===id).length;
+  if(!confirm(`確定刪除團隊「${tn}」？${n?`其下 ${n} 位成員將歸為「未分組」，可再重新指派。`:''}\n（刪除後可按下方「復原」按鈕還原）`)) return;
+  snapshotUndo(tn);
+  DATA.teams=DATA.teams.filter(x=>x.id!==id);
+  DATA.members.forEach(u=>{ if(u.teamId===id) u.teamId=''; });
+  save(); render(); showUndoToast(tn);
+}
+function val(id){ return (document.getElementById(id).value||'').trim(); }
+
+function delEntity(type,id){
+  const item=(DATA[type]||[]).find(x=>x.id===id);
+  const label=(item&&(item.name||item.title))||'此項目';
+  const typeName={roadmapItems:'Roadmap 項目',projects:'專案',modules:'技術模塊',members:'成員'}[type]||'項目';
+  if(!confirm(`確定刪除${typeName}「${label}」？\n（刪除後可按下方「復原」按鈕還原）`)) return;
+  snapshotUndo(label);
+  DATA[type]=DATA[type].filter(x=>x.id!==id);
+  // clean references
+  if(type==='members'){ DATA.projects.forEach(p=>p.memberIds=(p.memberIds||[]).filter(x=>x!==id)); DATA.modules.forEach(m=>m.ownerIds=(m.ownerIds||[]).filter(x=>x!==id)); }
+  if(type==='modules'){ DATA.projects.forEach(p=>p.moduleIds=(p.moduleIds||[]).filter(x=>x!==id)); DATA.members.forEach(u=>u.skillModuleIds=(u.skillModuleIds||[]).filter(x=>x!==id)); DATA.roadmapItems.forEach(r=>r.moduleIds=(r.moduleIds||[]).filter(x=>x!==id)); }
+  if(type==='projects'){ DATA.roadmapItems.forEach(r=>r.projectIds=(r.projectIds||[]).filter(x=>x!==id)); }
+  closeModal(); save(); render(); showUndoToast(label);
+}
+
+/* ============================================================ DATA IO ============================================================ */
+function exportData(){ const blob=new Blob([JSON.stringify(DATA,null,2)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='manager-platform-'+DATA.meta.updated+'.json'; a.click(); }
+// 匯出「含資料」的完整網頁：複製這一個檔到任何電腦打開即可看到目前資料（不需再匯入）
+function exportHTML(){
+  const seed=document.getElementById('seedData'); const prev=seed.textContent;
+  seed.textContent=JSON.stringify(DATA).replace(/<\//g,'<\\/'); // 內嵌資料；逸出結尾標籤避免 script 提前結束
+  const html='<!DOCTYPE html>\n'+document.documentElement.outerHTML;
+  seed.textContent=prev; // 還原目前頁面狀態
+  const blob=new Blob([html],{type:'text/html'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='Manager-Platform-'+DATA.meta.updated+'.html'; a.click();
+  alert('已匯出含資料的完整網頁。\n把這個 HTML 檔複製到其他電腦打開即可看到目前資料。\n（註：xlsx.full.min.js 若要在新電腦使用 Excel 匯入，需與此 HTML 放在同資料夾）');
+}
+function importData(e){ const f=e.target.files[0]; if(!f) return; const r=new FileReader();
+  r.onload=()=>{ try{ DATA=JSON.parse(r.result); save(); render(); alert('匯入成功'); }catch(err){ alert('檔案格式錯誤'); } }; r.readAsText(f); e.target.value=''; }
+// 匯出 Excel：三張可再匯入的資料表（成員 / 專案效益 / 模塊）
+function exportExcel(){
+  if(typeof XLSX==='undefined'){ alert('找不到 Excel 元件（xlsx.full.min.js），需與本網頁放在同一資料夾才能匯出 Excel。'); return; }
+  const memRows=[['姓名','職稱','所屬團隊','工時上限%','技術模塊（、分隔）']];
+  DATA.members.forEach(u=>{ const team=((DATA.teams||[]).find(t=>t.id===u.teamId)||{}).name||'';
+    const skills=(u.skillModuleIds||[]).map(id=>(mod(id)||{}).name).filter(Boolean).join('、');
+    memRows.push([u.name,u.title||'',team,u.capPct||100,skills]); });
+  const projRows=[['專案名稱','廠區','客戶','進度%','投入人數','產出效益(萬元/年)','效益內容','負責成員（、分隔）','使用模塊（、分隔）']];
+  DATA.projects.forEach(p=>{ const grp=(g(p.group)||{}).name||'';
+    const mems=(p.memberIds||[]).map(id=>(mem(id)||{}).name).filter(Boolean).join('、');
+    const mods=projModuleIds(p).map(id=>(mod(id)||{}).name).filter(Boolean).join('、');
+    projRows.push([p.name,grp,p.customer||'',projProgress(p),projHeadcount(p),projBenefit(p),p.gains||'',mems,mods]); });
+  const modRows=[['模塊名稱','分類','進度%','狀態','PM（、分隔）','預計完成','能力（、分隔）']];
+  DATA.modules.forEach(m=>{ const owners=(m.ownerIds||[]).map(id=>(mem(id)||{}).name).filter(Boolean).join('、');
+    modRows.push([m.name,m.category||'',m.progress||0,m.status||'',owners,m.eta||'',(m.caps||[]).join('、')]); });
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(memRows), '表1_團隊成員');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(projRows), '表2_專案效益');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(modRows), '表3_模塊');
+  XLSX.writeFile(wb, '部門資料-'+DATA.meta.updated+'.xlsx');
+}
+function toggleDataMenu(e){ e.stopPropagation(); const m=document.getElementById('dataMenu'); m.style.display=(m.style.display==='none')?'block':'none'; }
+function closeDataMenu(){ const m=document.getElementById('dataMenu'); if(m) m.style.display='none'; }
+document.addEventListener('click', closeDataMenu);
+function resetData(){ if(confirm('重置為範例資料？目前資料會被覆蓋（建議先匯出備份）。')){ DATA=JSON.parse(JSON.stringify(DEFAULT_DATA)); save(); render(); } }
+
+/* ---------- Excel 匯入（讀取「部門資料盤點範本.xlsx」） ---------- */
+function splitNames(s){ return String(s==null?'':s).split(/[、,，\n;；]+/).map(x=>x.trim()).filter(Boolean); }
+function findModuleByName(n){ n=n.trim(); return DATA.modules.find(m=>m.name===n) || DATA.modules.find(m=>m.name.includes(n)||n.includes(m.name)); }
+function findMemberByName(n){ n=n.trim(); return DATA.members.find(u=>u.name===n) || DATA.members.find(u=>u.name.includes(n)); }
+function findProjectByName(n){ n=n.trim(); return DATA.projects.find(p=>p.name===n) || DATA.projects.find(p=>p.name.includes(n)||n.includes(p.name)); }
+// 從 sheet（2D 陣列）找含關鍵字的表頭列，回傳 [{欄名:值}...]
+function sheetToObjs(rows, keyHint){
+  let hi=-1;
+  // 表頭列需含關鍵字，且至少有 2 個非空欄（排除單格標題列）
+  for(let i=0;i<Math.min(rows.length,10);i++){ const r=rows[i]||[];
+    if(r.some(c=>String(c).includes(keyHint)) && r.filter(c=>String(c).trim()).length>=2){ hi=i; break; } }
+  if(hi<0) return [];
+  const heads=rows[hi].map(h=>String(h==null?'':h).trim());
+  const out=[];
+  for(let i=hi+1;i<rows.length;i++){ const row=rows[i]||[]; const o={}; let any=false;
+    heads.forEach((h,j)=>{ const v=row[j]; o[h]=(v==null?'':v); if(String(v).trim()) any=true; });
+    if(any) out.push(o);
+  }
+  return out;
+}
+function col(o, kw){ const k=Object.keys(o).find(k=>k.includes(kw)); return k?o[k]:''; }
+function importExcel(e){
+  const f=e.target.files[0]; e.target.value=''; if(!f) return;
+  if(typeof XLSX==='undefined'){ alert('找不到 Excel 解析元件（xlsx.full.min.js）。請確認它和本網頁在同一資料夾。'); return; }
+  const rdr=new FileReader();
+  rdr.onload=()=>{
+    let wb; try{ wb=XLSX.read(rdr.result,{type:'array'}); }catch(err){ alert('讀取失敗，請確認是 .xlsx 檔'); return; }
+    const sheet=(hint)=>{ const nm=wb.SheetNames.find(n=>hint(n)); return nm?XLSX.utils.sheet_to_json(wb.Sheets[nm],{header:1,blankrows:false,defval:''}):null; };
+    const log={memNew:0,memUpd:0,modNew:0,modUpd:0,projUpd:0,projSkip:[],ph:0};
+
+    // 表1 團隊成員（含則先移除「範例」成員）
+    const memSheet=sheet(n=>n.includes('成員')||n.includes('表1'));
+    if(memSheet){
+      const objs=sheetToObjs(memSheet,'姓名');
+      if(objs.length){
+        const before=DATA.members.length;
+        DATA.members=DATA.members.filter(u=>!/範例/.test(u.name));
+        log.ph=before-DATA.members.length;
+        objs.forEach(o=>{
+          const name=String(col(o,'姓名')).trim(); if(!name) return;
+          const skills=[...new Set(splitNames(col(o,'技術模塊')||col(o,'專長')).map(sn=>{ let m=findModuleByName(sn); if(!m){ m={id:uid('m'),name:sn,category:'未分類',progress:0,phase:'(由Excel新增)',eta:'',status:'New',caps:[],ownerIds:[]}; DATA.modules.push(m); log.modNew++; } return m.id; }))];
+          const cap=parseInt(col(o,'上限')||col(o,'Loading'))||100;
+          let u=findMemberByName(name);
+          if(u){ u.title=String(col(o,'職稱')).trim()||u.title; u.capPct=cap; u.skillModuleIds=skills; log.memUpd++; }
+          else { DATA.members.push({id:uid('u'),name,title:String(col(o,'職稱')).trim(),teamId:(DATA.teams[0]||{}).id||'',skillModuleIds:skills,capPct:cap}); log.memNew++; }
+        });
+      }
+    }
+    // 表3 模塊修正（在成員之後，負責人名可解析）
+    const modSheet=sheet(n=>(n.includes('模塊')&&!n.includes('對照'))||n.includes('表3'));
+    if(modSheet){
+      sheetToObjs(modSheet,'模塊名稱').forEach(o=>{
+        const name=String(col(o,'模塊名稱')||col(o,'名稱')).trim(); if(!name) return;
+        const owners=splitNames(col(o,'PM')||col(o,'負責')).map(n=>{const u=findMemberByName(n);return u&&u.id;}).filter(Boolean);
+        const prog=col(o,'進度')!==''?(parseInt(col(o,'進度'))||0):null;
+        const cat=String(col(o,'分類')).trim(); const st=String(col(o,'狀態')).trim();
+        let m=findModuleByName(name);
+        if(m){ if(cat)m.category=cat; if(prog!=null)m.progress=prog; if(st)m.status=st; if(owners.length)m.ownerIds=owners; log.modUpd++; }
+        else { DATA.modules.push({id:uid('m'),name,category:cat||'未分類',progress:prog||0,phase:'(由Excel新增)',eta:'',status:st||'New',caps:[],ownerIds:owners}); log.modNew++; }
+      });
+    }
+    // 表2 專案效益（match by 名稱，僅更新）
+    const projSheet=sheet(n=>n.includes('效益')||n.includes('表2'));
+    if(projSheet){
+      sheetToObjs(projSheet,'專案').forEach(o=>{
+        const name=String(col(o,'專案')).trim(); if(!name) return;
+        const p=findProjectByName(name); if(!p){ log.projSkip.push(name); return; }
+        const hc=col(o,'投入'); if(String(hc).trim()!=='') p.headcount=parseInt(hc)||0;
+        const bf=col(o,'產出'); if(String(bf).trim()!=='') p.benefit=parseInt(bf)||0;
+        const gn=col(o,'內容'); if(String(gn).trim()!=='') p.gains=String(gn).trim();
+        const mems=splitNames(col(o,'負責')).map(n=>{const u=findMemberByName(n);return u&&u.id;}).filter(Boolean);
+        if(mems.length) p.memberIds=mems;
+        log.projUpd++;
+      });
+    }
+
+    if(!memSheet&&!modSheet&&!projSheet){ alert('找不到可辨識的分頁（表1成員 / 表2專案效益 / 表3模塊）。請使用「部門資料盤點範本.xlsx」。'); return; }
+    save(); render();
+    alert(`匯入完成：\n　成員 新增 ${log.memNew} / 更新 ${log.memUpd}${log.ph?`（移除 ${log.ph} 筆範例）`:''}\n　模塊 新增 ${log.modNew} / 更新 ${log.modUpd}\n　專案 更新 ${log.projUpd}${log.projSkip.length?`\n　⚠ 找不到對應專案（已略過）：${log.projSkip.join('、')}`:''}`);
+  };
+  rdr.readAsArrayBuffer(f);
+}
+
+/* ============================================================ INIT ============================================================ */
+function maybeShowSetup(){ if(!(DATA.meta&&DATA.meta.setup)) setTimeout(()=>showDeptSetup(true),350); }
+applyUICfg();
+renderTitle();
+render();
+document.getElementById('updated').textContent='更新：'+((DATA.meta&&DATA.meta.updated)||'');
+if(ghReady()){ cloudPull({force:false}).then(()=>{ renderTitle(); maybeShowSetup(); }); } else { setSyncStatus('off'); maybeShowSetup(); }
+</script>
+</body>
+</html>
