@@ -489,7 +489,12 @@ function effPanelInner(){
     : '<div style="font-size:12px;opacity:.7">此維度尚無投入人力的資料</div>';
   return tabs+rows;
 }
-function statusBadge(s){ if(s==='New') return '<span class="badge new">New</span>'; if(s==='延遲'||s==='Delay') return '<span class="badge warn">延遲</span>'; return '<span class="badge ok">正常</span>'; }
+// 技術模組狀態：排程狀態自動判定（同專案邏輯），另以紫色標籤標示「新技術」屬性
+function modStatusBadge(m){
+  const s=autoStatus({progress:m.progress, eta:m.eta});
+  const chip = (m.status==='New') ? '<span class="tag skill">新技術</span> ' : '';
+  return `${chip}<span class="badge ${s.cls}" title="${s.note?esc(s.note):'依進度與預計完成日自動判定'}">${s.icon} ${s.label}</span>`;
+}
 // 專案狀態自動判定：依 進度% + 預計完成日（今天比較）
 function parseETA(s){ const m=String(s||'').match(/(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})/); if(!m) return null; const d=new Date(+m[1],+m[2]-1,+m[3]); return isNaN(d.getTime())?null:d; }
 // 日曆 <input type=date> 用：YYYY/MM/DD ↔ YYYY-MM-DD（無效或非日期字串回空）
@@ -623,7 +628,12 @@ function roadmapChip(it,color){
     <div style="margin-top:4px;color:#555;font-size:11px">${pn?`🚗 ${pn} 專案 `:''}${mn?`🧩 ${mn} 模塊`:''}${(!pn&&!mn)?'尚未連結':''}</div>
   </div>`;
 }
-function editPillarName(id){ const p=pil(id); const v=(prompt('修改技術平台名稱', p.name)||'').trim(); if(v){ const pp=DATA.pillars.find(x=>x.id===id); pp.name=v; save(); render(); } }
+function editPillarName(id){ const p=pil(id);
+  openModal(`<h3>編輯技術平台</h3>
+    <div class="field"><label>技術平台名稱</label><input id="f_pilname" value="${esc(p.name)}" placeholder="例：3D 量測技術平台"></div>
+    <div class="modal-foot"><button class="btn ghost" onclick="closeModal()">取消</button><button class="btn" onclick="savePillarName('${id}')">儲存</button></div>`);
+}
+function savePillarName(id){ const v=val('f_pilname'); if(!v){ alert('請輸入技術平台名稱'); return; } const pp=DATA.pillars.find(x=>x.id===id); pp.name=v; save(); closeModal(); render(); }
 function delPillar(id){ const n=DATA.roadmapItems.filter(it=>it.pillar===id).length;
   if(n){ alert(`此技術平台底下還有 ${n} 個項目，請先刪除或改派該些項目。`); return; }
   const pn=(pil(id).name)||'此技術平台';
@@ -642,7 +652,7 @@ function roadmapDetail(id){
       :'<div style="color:var(--muted);font-size:12px;margin-bottom:8px">（無）</div>'}
     <div style="font-size:12px;font-weight:700;color:var(--muted);margin:10px 0 6px">連結技術模塊</div>
     ${mods.length?mods.map(m=>`<div class="card" style="padding:10px;margin-bottom:6px;cursor:pointer" onclick="closeModal();gotoModule('${m.id}')">
-        <div style="display:flex;justify-content:space-between"><b>${esc(m.name)}</b>${statusBadge(m.status)}</div>
+        <div style="display:flex;justify-content:space-between"><b>${esc(m.name)}</b>${modStatusBadge(m)}</div>
         <div class="pbar" style="margin-top:6px"><span style="width:${m.progress||0}%"></span></div>
         <div style="font-size:11px;color:var(--muted);margin-top:3px">進度 ${m.progress||0}%｜${esc(m.phase||'')} ➜ 點擊前往</div></div>`).join('')
       :'<div style="color:var(--muted);font-size:12px">（無）</div>'}
@@ -1019,7 +1029,7 @@ function moduleRow(m){
   return `<tr id="mod-${m.id}">
     <td><div class="nm">${esc(m.name)}</div><div class="ti">${esc(m.phase||'')}</div></td>
     <td><span style="white-space:nowrap"><span class="mini-meter"><span style="width:${m.progress||0}%;background:${col}"></span></span><b>${m.progress||0}%</b></span><div class="ti">預計 ${esc(m.eta||'-')}</div></td>
-    <td>${statusBadge(m.status)}</td>
+    <td>${modStatusBadge(m)}</td>
     <td style="max-width:220px">${caps}</td>
     <td style="font-size:12px;max-width:220px">PM：${owners}${roles?'<br><span style="font-size:11px;color:var(--muted)">'+roles+'</span>':''}</td>
     <td style="white-space:nowrap">${MODULE_EDIT?`<button class="btn sm ghost" onclick="editModule('${m.id}')">編輯</button> <button class="btn sm danger" onclick="delEntity('modules','${m.id}')">刪除</button>`:''}</td>
@@ -1027,7 +1037,7 @@ function moduleRow(m){
 }
 function moduleCard(m){
   return `<div class="card pcard" style="border-left-color:${catColor(m.category)}" id="mod-${m.id}">
-    <div class="top"><div class="name">${esc(m.name)}</div>${statusBadge(m.status)}</div>
+    <div class="top"><div class="name">${esc(m.name)}</div>${modStatusBadge(m)}</div>
     <div class="phase">階段：${esc(m.phase||'-')}</div>
     <div class="row" style="align-items:flex-end"><div style="flex:1"><span class="progress-num">${m.progress||0}%</span>
       <div class="pbar"><span style="width:${m.progress||0}%"></span></div></div>
@@ -1040,10 +1050,16 @@ function moduleCard(m){
 }
 
 /* ============================================================ MEMBERS ============================================================ */
-let MEMBER_VIEW='table'; // 'table' 一覽表 | 'card' 卡片
+let MEMBER_VIEW='card'; // 'card' 卡片 | 'table' 一覽表
 function setMemberView(v){ MEMBER_VIEW=v; renderMembers(); }
 let MEMBER_EDIT=false;
 function toggleMemberEdit(){ MEMBER_EDIT=!MEMBER_EDIT; renderMembers(); }
+// 團隊收合（與專案/技術一致）
+let MEMBER_COLLAPSE={};
+function memberKeys(){ const keys=(DATA.teams||[]).map(t=>t.id); const teamIds=keys.slice(); if(DATA.members.some(u=>!teamIds.includes(u.teamId))) keys.push('__orphan__'); return keys; }
+function toggleMemberGroupCollapse(k){ MEMBER_COLLAPSE[k]=!MEMBER_COLLAPSE[k]; renderMembers(); }
+function setAllMemberCollapse(v){ memberKeys().forEach(k=>MEMBER_COLLAPSE[k]=v); renderMembers(); }
+function toggleAllMemberCollapse(){ const ks=memberKeys(); const allCol=ks.length&&ks.every(k=>MEMBER_COLLAPSE[k]); setAllMemberCollapse(!allCol); }
 function renderMembers(){
   const teams=DATA.teams||[];
   const byTeam=teams.map(t=>({t,items:DATA.members.filter(u=>u.teamId===t.id)}));
@@ -1057,6 +1073,7 @@ function renderMembers(){
       <span class="spacer" style="flex:1"></span>
       <button class="btn sm ${MEMBER_VIEW==='table'?'':'ghost'}" onclick="setMemberView('table')">📋 一覽表</button>
       <button class="btn sm ${MEMBER_VIEW==='card'?'':'ghost'}" onclick="setMemberView('card')">🗂 卡片</button>
+      ${collapseToggleBtn('toggleAllMemberCollapse', memberKeys().length&&memberKeys().every(k=>MEMBER_COLLAPSE[k]))}
       ${ed?`<button class="btn sm ghost" onclick="editRoleWorkload()">⚙️ 角色工時</button>
       <button class="btn sm" onclick="editMember()">＋ 新增成員</button>`:''}
       ${editToggleBtn(ed,'toggleMemberEdit')}</div>`;
@@ -1064,32 +1081,36 @@ function renderMembers(){
   if(MEMBER_VIEW==='card'){
     const gridOpen='<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(320px,1fr))">';
     document.getElementById('view').innerHTML=head+
-      byTeam.map(b=>`<div style="margin-bottom:20px">
+      byTeam.map(b=>{ const col=MEMBER_COLLAPSE[b.t.id]; return `<div style="margin-bottom:20px">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-          <span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:${b.t.color}"></span>
-          <span style="font-weight:700;color:${b.t.color}">${esc(b.t.name)}（${b.items.length}）</span>
+          <span onclick="toggleMemberGroupCollapse('${b.t.id}')" style="cursor:pointer;user-select:none;display:inline-flex;align-items:center;gap:8px">
+            <span>${col?'▸':'▾'}</span>
+            <span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:${b.t.color}"></span>
+            <span style="font-weight:700;color:${b.t.color}">${esc(b.t.name)}（${b.items.length}）</span></span>
           ${ed?`<button class="btn sm ghost" style="padding:1px 7px" onclick="editTeam('${b.t.id}')" title="編輯團隊">✎</button>
           <button class="btn sm ghost" style="padding:1px 7px" onclick="delTeam('${b.t.id}')" title="刪除團隊">🗑</button>`:''}
         </div>
-        ${gridOpen}${b.items.map(u=>memberCard(u)).join('')||'<div class="empty">尚無成員</div>'}</div></div>`).join('')+
+        ${col?'':`${gridOpen}${b.items.map(u=>memberCard(u)).join('')||'<div class="empty">尚無成員</div>'}</div>`}</div>`}).join('')+
       (orphans.length?`<div style="margin-bottom:20px">
-        <div style="font-weight:700;color:var(--muted);margin-bottom:8px">未分組（${orphans.length}）<span style="font-size:11px;font-weight:400">　編輯成員可指派團隊</span></div>
-        ${gridOpen}${orphans.map(u=>memberCard(u)).join('')}</div></div>`:'');
+        <div style="margin-bottom:8px"><span onclick="toggleMemberGroupCollapse('__orphan__')" style="cursor:pointer;user-select:none;font-weight:700;color:var(--muted)"><span style="margin-right:6px">${MEMBER_COLLAPSE['__orphan__']?'▸':'▾'}</span>未分組（${orphans.length}）</span><span style="font-size:11px;font-weight:400;color:var(--muted)">　編輯成員可指派團隊</span></div>
+        ${MEMBER_COLLAPSE['__orphan__']?'':`${gridOpen}${orphans.map(u=>memberCard(u)).join('')}</div>`}</div>`:'');
     return;
   }
 
   // 一覽表
   const teamCell=t=>t?`<span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${t.color};margin-right:5px;vertical-align:middle"></span>${esc(t.name)}`:'<span style="color:var(--muted)">未分組</span>';
   const rows=[];
-  const pushGroup=(t,items)=>{
-    if(t) rows.push(`<tr class="teamrow"><td colspan="6"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${t.color};margin-right:6px"></span>${esc(t.name)}（${items.length}）${ed?`
+  const pushGroup=(t,items,key)=>{
+    const col=MEMBER_COLLAPSE[key];
+    if(t) rows.push(`<tr class="teamrow"><td colspan="6"><span onclick="toggleMemberGroupCollapse('${key}')" style="cursor:pointer;user-select:none"><span style="margin-right:6px">${col?'▸':'▾'}</span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${t.color};margin-right:6px"></span>${esc(t.name)}（${items.length}）</span>${ed?`
       <button class="btn sm ghost" style="padding:0 6px;margin-left:6px" onclick="editTeam('${t.id}')">✎</button>
       <button class="btn sm ghost" style="padding:0 6px" onclick="delTeam('${t.id}')">🗑</button>`:''}</td></tr>`);
+    if(col) return;
     if(!items.length){ rows.push('<tr><td colspan="6" style="color:var(--muted)">尚無成員</td></tr>'); return; }
     applySort(items,MEMBER_SORT,MEM_ACC).forEach(u=>rows.push(memberRow(u, t)));
   };
-  byTeam.forEach(b=>pushGroup(b.t,b.items));
-  if(orphans.length) pushGroup({id:'',name:'未分組',color:'#b8c2d0'},orphans);
+  byTeam.forEach(b=>pushGroup(b.t,b.items,b.t.id));
+  if(orphans.length) pushGroup({id:'',name:'未分組',color:'#b8c2d0'},orphans,'__orphan__');
 
   document.getElementById('view').innerHTML=head+`
     <table class="mtable">
@@ -1100,11 +1121,11 @@ function renderMembers(){
 function memberRow(u, team){
   const l=memberLoad(u.id); const cap=u.capPct||100; const ratio=Math.min(l.total/cap,1)*100;
   const color=l.total>cap?'var(--warn)':l.total>=cap*0.75?'#e6a23c':'var(--green)';
-  const badge=l.total>cap?'<span class="badge warn">超載</span>':l.total>=cap*0.75?'<span class="badge new">滿載</span>':'<span class="badge ok">有餘力</span>';
+  const badge=l.total>cap?'<span class="badge warn">超載</span>':l.total>=cap*0.75?'<span class="badge soon">滿載</span>':'<span class="badge ok">有餘力</span>';
   const projs=DATA.projects.filter(p=>personProjPct(u.id,p)>0);
   const mods=DATA.modules.filter(m=>personModPct(u.id,m)>0);
   const work=[ projs.length?`專案：${projs.map(p=>esc(p.name)).join('、')}`:'', mods.length?`模塊：${mods.map(m=>esc(m.name)).join('、')}`:'' ].filter(Boolean).join('<br>') || '<span style="color:var(--muted)">—</span>';
-  const skills=(u.skillRoles||[]).map(r=>`<span class="tag" style="background:#eef3e8;color:#5a7a3a">${esc(r)}</span>`).join('')||'<span style="color:var(--muted)">未設定</span>';
+  const skills=(u.skillRoles||[]).map(r=>`<span class="tag skill">${esc(r)}</span>`).join('')||'<span style="color:var(--muted)">未設定</span>';
   return `<tr>
     <td><div class="nm">${esc(u.name)}</div><div class="ti">${esc(u.title||'')}</div></td>
     <td><span style="white-space:nowrap"><span class="mini-meter"><span style="width:${ratio}%;background:${color}"></span></span><b style="color:${color}">${l.total}%</b>${cap!==100?'/'+cap+'%':''}</span><div class="ti">${l.projN}專案+${l.modN}模塊</div></td>
@@ -1122,11 +1143,11 @@ function memberCard(u){
   return `<div class="card mcard">
     <div class="top"><div><div class="name">${esc(u.name)}${u.title?` <span style="font-size:11px;font-weight:500;color:var(--muted)">${esc(u.title)}</span>`:''}</div></div></div>
     <div>
-      <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--muted);margin-bottom:6px"><span>${l.total>cap?'<span class="badge warn">超載</span>':l.total>=cap*0.75?'<span class="badge new">滿載</span>':'<span class="badge ok">有餘力</span>'}</span><span><b style="color:${color}">${l.total}%</b>${cap!==100?' / '+cap+'%':''}</span></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--muted);margin-bottom:6px"><span>${l.total>cap?'<span class="badge warn">超載</span>':l.total>=cap*0.75?'<span class="badge soon">滿載</span>':'<span class="badge ok">有餘力</span>'}</span><span><b style="color:${color}">${l.total}%</b>${cap!==100?' / '+cap+'%':''}</span></div>
       <div class="load-meter"><span style="width:${ratio*71}%;background:${color}"></span></div>
       <div style="font-size:11px;color:var(--muted);margin-top:3px">負責 ${l.projN} 專案 ＋ ${l.modN} 模塊</div>
     </div>
-    <div>${(u.skillRoles||[]).map(r=>`<span class="tag" style="background:#eef3e8;color:#5a7a3a">${esc(r)}</span>`).join('')||'<span style="font-size:11px;color:var(--muted)">未設定技能</span>'}</div>
+    <div>${(u.skillRoles||[]).map(r=>`<span class="tag skill">${esc(r)}</span>`).join('')||'<span style="font-size:11px;color:var(--muted)">未設定技能</span>'}</div>
     <div style="font-size:11px;color:var(--muted)">
       ${projs.length?'專案：'+projs.map(p=>esc(p.name)).join('、'):''}
       ${mods.length?'<br>模塊：'+mods.map(m=>esc(m.name)).join('、'):''}</div>
@@ -1184,7 +1205,7 @@ function runMatch(){
     <div class="section-title">① 可用技術模塊 <span class="count">依命中能力數 / 成熟度排序</span></div>
     <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(280px,1fr))">
       ${scored.length?scored.map(x=>`<div class="card pcard" style="border-left-color:${catColor(x.m.category)}">
-        <div class="top"><div class="name">${esc(x.m.name)}</div>${x.m.progress>=100?'<span class="badge ok">可量產</span>':x.m.status==='New'?'<span class="badge new">開發中</span>':'<span class="badge ok">'+x.m.progress+'%</span>'}</div>
+        <div class="top"><div class="name">${esc(x.m.name)}</div><span>${x.m.status==='New'?'<span class="tag skill">新技術</span> ':''}${x.m.progress>=100?'<span class="badge ok">可量產</span>':'<span class="badge go">開發 '+(x.m.progress||0)+'%</span>'}</span></div>
         <div style="margin:6px 0">命中：${x.hit.map(h=>`<span class="tag">${esc(h)}</span>`).join('')}</div>
         <div class="pbar"><span style="width:${x.m.progress}%"></span></div>
         <div style="font-size:11px;color:var(--muted);margin-top:4px">成熟度 ${x.m.progress}%｜${esc(x.m.phase||'')}</div></div>`).join('')
@@ -1482,7 +1503,7 @@ function editModule(id){
   openModal(`<h3>${id?'編輯':'新增'}技術模塊</h3>
     <div class="field"><label>模塊名稱</label><input id="f_name" value="${esc(m.name)}"></div>
     <div class="row"><div class="field" style="flex:1"><label>分類</label><select id="f_cat" onchange="catSelectChange(this)">${cats.map(c=>`<option value="${esc(c)}" ${m.category===c?'selected':''}>${esc(c)}</option>`).join('')}<option value="__new__">＋ 新增分類…</option></select></div>
-      <div class="field" style="flex:1"><label>狀態</label><select id="f_status"><option ${m.status==='正常'?'selected':''}>正常</option><option ${m.status==='New'?'selected':''}>New</option></select></div></div>
+      <div class="field" style="flex:1"><label>新技術標記</label><select id="f_status"><option value="正常" ${m.status!=='New'?'selected':''}>一般技術</option><option value="New" ${m.status==='New'?'selected':''}>New 新技術</option></select><div class="hint">排程狀態（進行中／衝刺中／延遲）依進度與預計完成日自動判定</div></div></div>
     <div class="field"><label>目前階段</label><input id="f_phase" value="${esc(m.phase)}"></div>
     <div class="row"><div class="field" style="flex:1"><label>進度 %</label><input id="f_progress" type="number" min="0" max="100" value="${m.progress}"></div>
       <div class="field" style="flex:1"><label>預計完成日</label><input id="f_eta" type="date" value="${toDateInput(m.eta)}"></div>
@@ -1697,10 +1718,9 @@ function openReport(){
       <div class="kpi-meta">${c.list.length} 項　｜　人均 ${c.perHead} 萬/年·人</div>
       <div class="kpi-bar"><i style="width:${c.pct}%"></i></div></div>`).join('');
   const techBarItems=[]; byCat.forEach(c=>c.list.slice().sort((a,b)=>(+b.progress||0)-(+a.progress||0)).forEach(m=>techBarItems.push({label:m.name,value:+m.progress||0,color:c.color})));
-  const stat=s=>{ if(s==='New')return['New','st-new']; if(s==='延遲'||s==='Delay')return['延遲','st-warn']; return['正常','st-ok']; };
-  const techCardHTML=byCat.map(c=>c.list.map(m=>{ const r=stat(m.status); const isNew=(m.status==='New');
-    return `<div class="scard${isNew?' is-hot':''}">
-      <div class="sc-head"><span class="sc-name">${esc(m.name)}</span><span class="sbadge ${r[1]}">${r[0]}</span></div>
+  const techCardHTML=byCat.map(c=>c.list.map(m=>{ const st=autoStatus({progress:m.progress,eta:m.eta}); const isNew=(m.status==='New'); const hot=isNew||['new','warn','soon'].includes(st.cls);
+    return `<div class="scard${hot?' is-hot':''}">
+      <div class="sc-head"><span class="sc-name">${esc(m.name)}</span><span>${isNew?'<span class="newtag">新技術</span> ':''}<span class="sbadge st-${st.cls}">${st.icon} ${st.label}</span></span></div>
       <div class="sc-row"><span class="sc-k">階段</span><span class="sc-v">${esc(m.phase||'—')}</span></div>
       <div class="sc-row sc-foot"><span><b>進度：${(+m.progress||0)}%</b></span><span class="sc-eta">預計：${esc(m.eta||'—')}</span></div>
     </div>`; }).join('')).join('');
@@ -1760,6 +1780,7 @@ function openReport(){
     .st-go{background:rgba(47,111,208,.16);color:#2f6fd0;}
     .st-soon{background:rgba(217,142,21,.16);color:#b6740c;}
     .st-warn{background:rgba(224,86,63,.16);color:#e0563f;}
+    .newtag{font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;white-space:nowrap;background:rgba(106,79,176,.14);color:#6a4fb0;}
     .sc-row{font-size:12px;color:#445;display:flex;gap:8px;margin-top:2px;}
     .sc-k{color:#8a93a6;min-width:30px;}
     .sc-v{flex:1;}
@@ -1793,7 +1814,7 @@ function openReport(){
       <div class="summary">${techSummary}</div>
       <div class="grid2">
         <div><div class="kpis">${techKpiHTML}</div><div class="chart-box"><div class="chart-title">${esc(deptName)} 新技術完成度</div>${barChartHTML(techBarItems)}</div></div>
-        <div><div class="cards">${techCardHTML}</div><div class="legend">藍框＝New 新技術項目</div></div>
+        <div><div class="cards">${techCardHTML}</div><div class="legend">藍框＝需關注（新技術／衝刺中／延遲）　紫標＝新技術</div></div>
       </div></section>
     <script>function showRpt(m){var p=m==='proj';document.getElementById('sec-proj').style.display=p?'block':'none';document.getElementById('sec-tech').style.display=p?'none':'block';document.getElementById('tb-proj').className=p?'on':'';document.getElementById('tb-tech').className=p?'':'on';document.getElementById('rpt-title').textContent=p?'專案進度總表':'新技術進度總表';}<\/script>
     </body></html>`;
