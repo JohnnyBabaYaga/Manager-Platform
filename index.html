@@ -178,6 +178,7 @@
     <div id="dataMenu" class="menu" style="display:none" onclick="event.stopPropagation()">
       <div class="menu-sec">報告</div>
       <button class="menu-item" onclick="openReport();closeDataMenu()">📊 One-Page 報告（專案／技術）</button>
+      <button class="menu-item" onclick="openReportConfig();closeDataMenu()">⭐ 報告重點設定（右側區塊）</button>
       <div class="menu-div"></div>
       <div class="menu-sec">匯出</div>
       <button class="menu-item" onclick="exportHTML();closeDataMenu()">📦 完整網頁（可攜，最簡單）</button>
@@ -322,7 +323,7 @@ function load(){ let d; try{
     else { const seed=document.getElementById('seedData'); const txt=seed&&seed.textContent.trim(); d= txt?JSON.parse(txt):JSON.parse(JSON.stringify(DEFAULT_DATA)); } // 可攜網頁：localStorage 為空時改讀內嵌資料
   }catch(e){ d = JSON.parse(JSON.stringify(DEFAULT_DATA)); } return migrate(d); }
 function migrate(d){ // 相容舊資料：補上新欄位
-  (d.projects||[]).forEach(p=>{ if(p.benefit==null)p.benefit=0; if(p.gains==null)p.gains=''; if(p.headcount==null)p.headcount=0; if(!Array.isArray(p.stations))p.stations=[]; (p.stations||[]).forEach(st=>{ if(!Array.isArray(st.moduleIds))st.moduleIds=[]; if(!Array.isArray(st.ownerIds))st.ownerIds=[]; if(st.progress==null)st.progress=0; if(typeof st.roleMembers!=='object'||!st.roleMembers)st.roleMembers={}; if(!Array.isArray(st.roles))st.roles=Object.keys(st.roleMembers); }); });
+  (d.projects||[]).forEach(p=>{ if(p.benefit==null)p.benefit=0; if(p.gains==null)p.gains=''; if(p.headcount==null)p.headcount=0; if(!Array.isArray(p.stations))p.stations=[]; (p.stations||[]).forEach(st=>{ if(!Array.isArray(st.moduleIds))st.moduleIds=[]; if(!Array.isArray(st.ownerIds))st.ownerIds=[]; if(st.progress==null)st.progress=0; if(st.phase==null)st.phase=''; if(typeof st.roleMembers!=='object'||!st.roleMembers)st.roleMembers={}; if(!Array.isArray(st.roles))st.roles=Object.keys(st.roleMembers); }); });
   if(!d.pillars) d.pillars = JSON.parse(JSON.stringify(DEFAULT_DATA.pillars));
   if(!d.roadmapItems) d.roadmapItems = JSON.parse(JSON.stringify(DEFAULT_DATA.roadmapItems));
   if(!d.teams) d.teams = JSON.parse(JSON.stringify(DEFAULT_DATA.teams));
@@ -345,8 +346,13 @@ function migrate(d){ // 相容舊資料：補上新欄位
   (d.members||[]).forEach(u=>{ if(u.capPct==null) u.capPct=100; if(!Array.isArray(u.skillRoles)) u.skillRoles=[]; });
   (d.projects||[]).forEach(p=>{ if(p.weight==null) p.weight=1; });
   (d.modules||[]).forEach(m=>{ if(m.weight==null) m.weight=1; });
+  // 專案技術平台(Pillar)：舊資料未指派時，依 Roadmap 連結自動推斷一個預設值
+  (d.projects||[]).forEach(p=>{ if(p.pillarId==null){ const ri=(d.roadmapItems||[]).find(r=>(r.projectIds||[]).includes(p.id)); p.pillarId=ri?ri.pillar:''; } });
   if(!d.meta) d.meta={updated:DEFAULT_DATA.meta.updated}; d.meta.version=DEFAULT_DATA.meta.version;
   if(!d.meta.title) d.meta.title='部門指揮中心';
+  if(!d.meta.reportFeature||typeof d.meta.reportFeature!=='object') d.meta.reportFeature={projects:[],modules:[]};
+  if(!Array.isArray(d.meta.reportFeature.projects)) d.meta.reportFeature.projects=[];
+  if(!Array.isArray(d.meta.reportFeature.modules)) d.meta.reportFeature.modules=[];
   if(d.meta.schemaVersion==null) d.meta.schemaVersion=DEFAULT_DATA.meta.schemaVersion;
   if(!d.department) d.department=JSON.parse(JSON.stringify(DEFAULT_DATA.department));
   // setup 旗標：判斷此份資料是否已完成部門設定（有部門名稱即視為已設定，相容舊資料）
@@ -448,6 +454,11 @@ function memberLoad(uId){
 function projFTE(p){ let s=0; projAllMemberIds(p).forEach(uId=>{ s += personProjPct(uId,p); }); return s/100; }
 // 投入人數：一律用等效人力(FTE)，四捨五入到小數1位
 function projHeadcount(p){ return Math.round(projFTE(p)*10)/10; }
+// 專案所屬技術平台(Pillar)與其事業領域(Mobility/Display)
+function projPillar(p){ return (DATA.pillars||[]).find(x=>x.id===(p&&p.pillarId)) || null; }
+function projDomain(p){ const pl=projPillar(p); return pl?pl.domain:'未分類'; }
+// 主專案目前階段：由使用者手動填寫，描述整個主專案的狀態（子專案各站階段另於站點顯示）
+function projPhase(p){ return (p&&p.phase)||''; }
 // 部門人均產出效益 = 總效益 ÷ 總投入人數（只計有投入人力的專案）
 function deptEfficiency(){
   let benefit=0, heads=0;
@@ -846,7 +857,7 @@ function projectRow(p){
   const h=projHeadcount(p);
   const mems=(p.memberIds||[]).map(id=>mem(id)?esc(mem(id).name):'').filter(Boolean).join('、')||'<span style="color:var(--warn)">⚠ 未指派</span>';
   return `<tr id="proj-${p.id}">
-    <td><div class="nm">${esc(p.name)}</div><div class="ti">${esc(p.phase||'')}</div></td>
+    <td><div class="nm">${esc(p.name)}</div><div class="ti">${esc(projPhase(p))}</div></td>
     <td style="white-space:nowrap">${esc(p.customer||'-')}</td>
     <td><span style="white-space:nowrap"><span class="mini-meter"><span style="width:${projProgress(p)}%;background:${g(p.group).color}"></span></span><b>${projProgress(p)}%</b></span><div class="ti">預計 ${esc(p.eta||'-')}</div>${(p.stations||[]).length?`<div class="ti" style="color:var(--blue);cursor:pointer" onclick="toggleProjStations('${p.id}')">${PROJ_STATION_OPEN[p.id]?'▾':'▸'} ${(p.stations||[]).length} 站</div>`:''}</td>
     <td>${projStatusBadge(p)}</td>
@@ -866,7 +877,7 @@ function stationRows(p){
     const roleTxt=FUNC_ROLES.filter(r=>(srm[r]||[]).length).map(r=>`${r}：${(srm[r]||[]).map(id=>mem(id)?esc(mem(id).name):'').filter(Boolean).join('、')}`).join('　');
     const h=stationHeadcount(st);
     return `<tr style="background:#fbfcfe">
-      <td style="padding-left:22px"><div class="nm" style="font-size:12px">└ ${esc(st.name||'-')}</div></td>
+      <td style="padding-left:22px"><div class="nm" style="font-size:12px">└ ${esc(st.name||'-')}</div>${st.phase?`<div class="ti">${esc(st.phase)}</div>`:''}</td>
       <td></td>
       <td><span style="white-space:nowrap"><span class="mini-meter"><span style="width:${+st.progress||0}%;background:${g(p.group).color}"></span></span><b>${+st.progress||0}%</b></span><div class="ti">預計 ${esc(st.eta||'-')}</div></td>
       <td><span class="badge ${s.cls}">${s.icon} ${s.label}</span></td>
@@ -898,7 +909,7 @@ function stationCardList(p){
       const people=[...(st.ownerIds||[]).map(id=>mem(id)?esc(mem(id).name):'').filter(Boolean), ...FUNC_ROLES.flatMap(r=>(srm[r]||[]).map(id=>mem(id)?esc(mem(id).name):'')).filter(Boolean)];
       const who=[...new Set(people)].join('、');
       return `<div style="display:flex;align-items:center;gap:6px;font-size:11px;margin-bottom:3px">
-        <span style="flex:1">${esc(st.name||'-')}${who?` <span style="color:var(--muted)">· ${who}</span>`:''}</span>
+        <span style="flex:1">${esc(st.name||'-')}${st.phase?` <span style="color:var(--muted);font-weight:400">｜${esc(st.phase)}</span>`:''}${who?` <span style="color:var(--muted)">· ${who}</span>`:''}</span>
         <span class="mini-meter" style="width:48px"><span style="width:${+st.progress||0}%;background:${g(p.group).color}"></span></span>
         <b style="width:34px;text-align:right">${+st.progress||0}%</b>
         <span class="badge ${s.cls}" style="transform:scale(.85)">${s.icon}</span></div>`;}).join('')}
@@ -908,7 +919,7 @@ function projectCard(p){
   const h=projHeadcount(p);
   return `<div class="card pcard" style="border-left-color:${g(p.group).color}" id="proj-${p.id}">
     <div class="top"><div><div class="name">${esc(p.name)}</div><div class="meta">客戶：${esc(p.customer||'-')}</div></div>${projStatusBadge(p)}</div>
-    <div class="phase">階段：${esc(p.phase||'-')}</div>
+    <div class="phase">階段：${esc(projPhase(p)||'-')}</div>
     <div class="row" style="align-items:flex-end"><div style="flex:1"><span class="progress-num">${projProgress(p)}%</span>
       <div class="pbar"><span style="width:${projProgress(p)}%"></span></div></div>
       <div style="text-align:right;font-size:12px;color:var(--muted)">預計<br>${esc(p.eta||'-')}</div></div>
@@ -1338,12 +1349,13 @@ function collectRoleMembers(prefix){ const o={}; FUNC_ROLES.forEach((r,i)=>{ con
 let EDIT_STATIONS=[];
 function editProject(id){
   const p = id?proj(id):{id:uid('p'),name:'',group:'XM',customer:'',phase:'',progress:0,eta:'',status:'正常',needs:[],moduleIds:[],memberIds:[],headcount:0,benefit:0,gains:'',stations:[]};
-  EDIT_STATIONS=(p.stations||[]).map(st=>{ const srm=st.roleMembers||{}; return {id:st.id||uid('st'),name:st.name||'',progress:+st.progress||0,eta:st.eta||'',benefit:+st.benefit||0,moduleIds:[...(st.moduleIds||[])],ownerIds:[...(st.ownerIds||[])],roles:Array.isArray(st.roles)&&st.roles.length?[...st.roles]:Object.keys(srm),roleMembers:JSON.parse(JSON.stringify(srm))}; });
+  EDIT_STATIONS=(p.stations||[]).map(st=>{ const srm=st.roleMembers||{}; return {id:st.id||uid('st'),name:st.name||'',phase:st.phase||'',progress:+st.progress||0,eta:st.eta||'',benefit:+st.benefit||0,moduleIds:[...(st.moduleIds||[])],ownerIds:[...(st.ownerIds||[])],roles:Array.isArray(st.roles)&&st.roles.length?[...st.roles]:Object.keys(srm),roleMembers:JSON.parse(JSON.stringify(srm))}; });
   openModal(`<h3>${id?'編輯':'新增'}專案</h3>
     <div class="field"><label>專案名稱</label><input id="f_name" value="${esc(p.name)}"></div>
     <div class="row"><div class="field" style="flex:1"><label>線體群組／廠區</label><select id="f_group" onchange="groupSelectChange(this)">${DATA.groups.map(gr=>`<option value="${gr.id}" ${p.group===gr.id?'selected':''}>${esc(gr.name)}</option>`).join('')}<option value="__new__">＋ 新增廠區…</option></select></div>
+      <div class="field" style="flex:1"><label>技術平台 Pillar（Mobility／Display）</label><select id="f_pillar"><option value="">（未指派）</option>${[...new Set((DATA.pillars||[]).map(x=>x.domain))].map(dm=>`<optgroup label="${esc(dm)}">${(DATA.pillars||[]).filter(x=>x.domain===dm).map(x=>`<option value="${x.id}" ${p.pillarId===x.id?'selected':''}>${esc(x.name)}</option>`).join('')}</optgroup>`).join('')}</select><div class="hint">決定此專案在報告中歸於 Mobility 或 Display</div></div>
       <div class="field" style="flex:1"><label>客戶</label><input id="f_customer" value="${esc(p.customer)}"></div></div>
-    <div class="field"><label>目前階段</label><input id="f_phase" value="${esc(p.phase)}"></div>
+    <div class="field"><label>目前階段</label><input id="f_phase" value="${esc(p.phase)}"><div class="hint">填寫整個主專案的目前階段／狀態；各子專案（站點）階段請於下方各站個別填寫</div></div>
     <div class="row"><div class="field" style="flex:1"><label>進度 %</label><input id="f_progress" type="number" min="0" max="100" value="${p.progress||0}" oninput="refreshAutoStatus()"><div class="hint" id="f_progressHint" style="display:none">有 AOI 站點時，線進度＝各站平均自動計算</div></div>
       <div class="field" style="flex:1"><label>預計完成日</label><input id="f_eta" type="date" value="${toDateInput(p.eta)}" onchange="refreshAutoStatus()"></div>
       <div class="field" style="flex:1"><label>狀態（自動）</label><div id="f_statusAuto" style="padding:7px 0">—</div><div class="hint">依進度與預計日自動判定</div></div></div>
@@ -1377,6 +1389,7 @@ function stationsEditorHTML(){
       <div class="field" style="flex:1.2;margin-bottom:0"><label>預計完成</label><input type="date" value="${toDateInput(st.eta)}" onchange="stationField(${i},'eta',fromDateInput(this.value))"></div>
       <div class="field" style="flex:1;margin-bottom:0"><label>效益(萬/年)</label><input type="number" min="0" value="${+st.benefit||0}" oninput="stationField(${i},'benefit',this.value)"></div>
       <button type="button" class="btn sm danger" style="margin-bottom:2px" onclick="removeStation(${i})">刪除</button></div>
+    <div class="field" style="margin:8px 0 0"><label>目前階段</label><input value="${esc(st.phase||'')}" oninput="stationField(${i},'phase',this.value)" placeholder="例：設備 Pilot-run 測試中"></div>
     <div class="field" style="margin:8px 0 0"><label>使用模塊</label>${checkboxGrid('st_mod_'+i,DATA.modules.map(m=>({id:m.id,label:m.name})),st.moduleIds)}</div>
     <div class="field" style="margin:8px 0 0"><label>站長（站點負責人）</label>${checkboxGrid('st_own_'+i,DATA.members.map(m=>({id:m.id,label:m.name})),st.ownerIds)}</div>
     <div class="field" style="margin:8px 0 0"><label>投入功能別</label>
@@ -1397,7 +1410,7 @@ function toggleStationRole(i, role, checked){ syncStationsFromDOM(); const st=ED
 function stationField(i,k,v){ if(EDIT_STATIONS[i]) EDIT_STATIONS[i][k]=((k==='progress'||k==='benefit')?(+v||0):v); if(k==='progress') recalcLineProgress(); if(k==='benefit') recalcLineBenefit(); }
 function recalcLineProgress(){ const pf=document.getElementById('f_progress'); if(pf&&EDIT_STATIONS.length){ pf.value=Math.round(EDIT_STATIONS.reduce((a,s)=>a+(+s.progress||0),0)/EDIT_STATIONS.length); } refreshAutoStatus(); }
 function recalcLineBenefit(){ const bf=document.getElementById('f_benefit'); if(bf&&EDIT_STATIONS.length){ bf.value=EDIT_STATIONS.reduce((a,s)=>a+(+s.benefit||0),0); } }
-function addStation(){ syncStationsFromDOM(); EDIT_STATIONS.push({id:uid('st'),name:'',progress:0,eta:'',benefit:0,moduleIds:[],ownerIds:[],roles:[],roleMembers:{}}); rerenderStations(); }
+function addStation(){ syncStationsFromDOM(); EDIT_STATIONS.push({id:uid('st'),name:'',phase:'',progress:0,eta:'',benefit:0,moduleIds:[],ownerIds:[],roles:[],roleMembers:{}}); rerenderStations(); }
 function removeStation(i){ syncStationsFromDOM(); EDIT_STATIONS.splice(i,1); rerenderStations(); }
 function rerenderStations(){ const box=document.getElementById('stationsBox'); if(box) box.innerHTML=stationsEditorHTML(); const has=EDIT_STATIONS.length>0; const pf=document.getElementById('f_progress'), hint=document.getElementById('f_progressHint'); if(pf){ pf.disabled=has; if(has){ pf.value=Math.round(EDIT_STATIONS.reduce((a,s)=>a+(+s.progress||0),0)/EDIT_STATIONS.length); } if(hint) hint.style.display=has?'block':'none'; } const bf=document.getElementById('f_benefit'), bhint=document.getElementById('f_benefitHint'); if(bf){ bf.disabled=has; if(has){ bf.value=EDIT_STATIONS.reduce((a,s)=>a+(+s.benefit||0),0); } if(bhint) bhint.style.display=has?'block':'none'; } refreshAutoStatus(); }
 function refreshAutoStatus(){
@@ -1408,8 +1421,8 @@ function refreshAutoStatus(){
 function saveProject(pid,exists){
   syncStationsFromDOM();
   const orig=exists?proj(pid):null;
-  const stations=EDIT_STATIONS.filter(s=>s.name||s.moduleIds.length||s.ownerIds.length||(s.roles||[]).length||+s.benefit).map(s=>({id:s.id||uid('st'),name:s.name,progress:+s.progress||0,eta:s.eta||'',benefit:+s.benefit||0,moduleIds:[...s.moduleIds],ownerIds:[...s.ownerIds],roles:[...(s.roles||[])],roleMembers:JSON.parse(JSON.stringify(s.roleMembers||{}))}));
-  const o={ id:pid, name:val('f_name'), group:val('f_group'), customer:val('f_customer'), phase:val('f_phase'),
+  const stations=EDIT_STATIONS.filter(s=>s.name||s.phase||s.moduleIds.length||s.ownerIds.length||(s.roles||[]).length||+s.benefit).map(s=>({id:s.id||uid('st'),name:s.name,phase:s.phase||'',progress:+s.progress||0,eta:s.eta||'',benefit:+s.benefit||0,moduleIds:[...s.moduleIds],ownerIds:[...s.ownerIds],roles:[...(s.roles||[])],roleMembers:JSON.parse(JSON.stringify(s.roleMembers||{}))}));
+  const o={ id:pid, name:val('f_name'), group:val('f_group'), pillarId:val('f_pillar'), customer:val('f_customer'), phase:val('f_phase'),
     progress:+val('f_progress')||0, eta:fromDateInput(val('f_eta')),
     headcount:0, benefit:+val('f_benefit')||0, gains:val('f_gains'), weight:+val('f_weight')||1,
     needs:val('f_needs').split(/[,，]/).map(s=>s.trim()).filter(Boolean), moduleIds:(orig?orig.moduleIds||[]:[]), memberIds:getChecked('f_mems'), roleMembers:(orig?orig.roleMembers||{}:{}), stations };
@@ -1679,31 +1692,44 @@ function openReport(){
     return `<div class="chart"><div class="yax">${ticks.map(t=>`<span>${t}%</span>`).join('')}</div>`
       +`<div class="plot"><div class="plotarea"><div class="bars">${bars}</div></div><div class="xlabs">${labs}</div></div></div>`;
   }
-  /* ===== 專案總表 ===== */
+  const featProj=((DATA.meta.reportFeature||{}).projects)||[];
+  const featMod=((DATA.meta.reportFeature||{}).modules)||[];
+  /* ===== 專案總表（依 Pillar 分 Mobility／Display） ===== */
   const projs=(DATA.projects||[]).slice();
-  const grpKpi=(DATA.groups||[]).map(gr=>{ const ps=projs.filter(p=>p.group===gr.id);
-      const avg=ps.length?Math.round(ps.reduce((a,p)=>a+projProgress(p),0)/ps.length):0;
-      const e=effGmap[gr.name];
-      return {name:gr.name,color:gr.color,avg,n:ps.length,perHead:e?e.perHead:0}; }).filter(x=>x.n>0);
-  const projKpiHTML=grpKpi.map(c=>`<div class="kpi" style="background:${c.color}">
+  // 領域順序：先依 pillars 定義出現順序，未指派者歸「未分類」殿後
+  const domOrder=[...new Set((DATA.pillars||[]).map(x=>x.domain))];
+  if(projs.some(p=>projDomain(p)==='未分類')) domOrder.push('未分類');
+  const domKpi=domOrder.map(dm=>{ const ps=projs.filter(p=>projDomain(p)===dm); if(!ps.length) return null;
+      const avg=Math.round(ps.reduce((a,p)=>a+projProgress(p),0)/ps.length);
+      const ben=ps.reduce((a,p)=>a+projBenefit(p),0);
+      const fte=ps.reduce((a,p)=>a+projFTE(p),0);
+      const perHead=fte>0?Math.round(ben/fte):0;
+      return {name:dm,color:domainColor(dm),avg,n:ps.length,ben,perHead}; }).filter(Boolean);
+  const projKpiHTML=domKpi.map(c=>`<div class="kpi" style="background:${c.color}">
       <div class="kpi-top"><span class="kpi-name">${esc(c.name)}</span><span class="kpi-pct">${c.avg}%</span></div>
-      <div class="kpi-meta">${c.n} 案　｜　人均 ${c.perHead} 萬/年·人</div>
+      <div class="kpi-meta">${c.n} 案　｜　效益 ${c.ben} 萬/年　｜　人均 ${c.perHead} 萬/年·人</div>
       <div class="kpi-bar"><i style="width:${c.avg}%"></i></div></div>`).join('');
-  const projBarItems=projs.map(p=>({label:p.name.replace(/\(.*?\)/g,'').slice(0,12),value:projProgress(p),color:g(p.group).color}));
-  const projCards=projs.map(p=>{ const prog=projProgress(p), ben=projBenefit(p), h=projHeadcount(p);
+  // 長條圖：依領域分群、群內依進度高→低，顏色帶領域色
+  const projBarItems=domOrder.flatMap(dm=>projs.filter(p=>projDomain(p)===dm).sort((a,b)=>projProgress(b)-projProgress(a))
+      .map(p=>({label:p.name.replace(/\(.*?\)/g,'').slice(0,12),value:projProgress(p),color:domainColor(dm)})));
+  // 右側重點：有勾選用勾選的；未勾選則自動帶出「需關注」專案
+  const projCardData=p=>{ const prog=projProgress(p), ben=projBenefit(p), h=projHeadcount(p);
       const ph=h>0?Math.round(ben/h):0; const st=autoStatus({progress:prog,eta:p.eta});
       const pm=(p.memberIds||[]).map(id=>(mem(id)||{}).name).filter(Boolean).join('、')||'—';
-      const hot=['new','warn','soon'].includes(st.cls);
-      return {p,prog,ben,ph,st,pm,hot}; }).sort((a,b)=>b.ben-a.ben);
-  const projCardHTML=projCards.map(o=>{ const p=o.p, gc=g(p.group).color;
+      const hot=['new','warn','soon'].includes(st.cls); return {p,prog,ben,ph,st,pm,hot}; };
+  let rightProjs = featProj.length ? projs.filter(p=>featProj.includes(p.id)) : projs.filter(p=>projCardData(p).hot);
+  if(!rightProjs.length) rightProjs=projs.slice();
+  const projCards=rightProjs.map(projCardData).sort((a,b)=>b.ben-a.ben);
+  const projCardHTML=projCards.map(o=>{ const p=o.p, dm=projDomain(p), dc=domainColor(dm);
     return `<div class="pcard${o.hot?' is-hot':''}">
       <div class="sc-head"><span class="sc-name">${esc(p.name)}</span><span class="sbadge st-${o.st.cls}">${o.st.icon} ${o.st.label}</span></div>
-      <div class="pc-meta">${esc(g(p.group).name)}${p.customer?'｜'+esc(p.customer):''}</div>
-      <div class="pc-bar"><i style="width:${o.prog}%;background:${gc}"></i></div>
+      <div class="pc-meta"><span class="domtag" style="background:${dc}">${esc(dm)}</span>${esc(g(p.group).name)}${p.customer?'｜'+esc(p.customer):''}</div>
+      <div class="pc-bar"><i style="width:${o.prog}%;background:${dc}"></i></div>
       <div class="pc-stats"><span><b>${o.prog}%</b> 進度</span><span>💰 ${o.ben} 萬/年</span><span>👤 ${o.ph} 萬/年·人</span></div>
       <div class="pc-foot">PM：${esc(o.pm)}　預計：${esc(p.eta||'—')}</div></div>`; }).join('');
-  const projSummary=grpKpi.map(c=>`<span class="sum-i"><i style="background:${c.color}"></i>${esc(c.name)}：${c.n} 案</span>`).join('')
+  const projSummary=domKpi.map(c=>`<span class="sum-i"><i style="background:${c.color}"></i>${esc(c.name)}：${c.n} 案</span>`).join('')
     +`<span class="sum-i sum-total">總計：${projs.length} 案</span>`;
+  const projRightTitle=featProj.length?'重點專案':'需關注專案';
   /* ===== 技術總表 ===== */
   const cats=(DATA.moduleCats||[]).slice();
   const mods=(DATA.modules||[]).slice();
@@ -1718,12 +1744,17 @@ function openReport(){
       <div class="kpi-meta">${c.list.length} 項　｜　人均 ${c.perHead} 萬/年·人</div>
       <div class="kpi-bar"><i style="width:${c.pct}%"></i></div></div>`).join('');
   const techBarItems=[]; byCat.forEach(c=>c.list.slice().sort((a,b)=>(+b.progress||0)-(+a.progress||0)).forEach(m=>techBarItems.push({label:m.name,value:+m.progress||0,color:c.color})));
-  const techCardHTML=byCat.map(c=>c.list.map(m=>{ const st=autoStatus({progress:m.progress,eta:m.eta}); const isNew=(m.status==='New'); const hot=isNew||['new','warn','soon'].includes(st.cls);
+  // 右側重點：有勾選用勾選的；未勾選則自動帶出「新技術／需關注」
+  const techHot=m=>{ const st=autoStatus({progress:m.progress,eta:m.eta}); return m.status==='New'||['new','warn','soon'].includes(st.cls); };
+  let rightMods = featMod.length ? mods.filter(m=>featMod.includes(m.id)) : mods.filter(techHot);
+  if(!rightMods.length) rightMods=mods.slice();
+  const techCardHTML=rightMods.map(m=>{ const st=autoStatus({progress:m.progress,eta:m.eta}); const isNew=(m.status==='New'); const hot=isNew||['new','warn','soon'].includes(st.cls);
     return `<div class="scard${hot?' is-hot':''}">
       <div class="sc-head"><span class="sc-name">${esc(m.name)}</span><span>${isNew?'<span class="newtag">新技術</span> ':''}<span class="sbadge st-${st.cls}">${st.icon} ${st.label}</span></span></div>
       <div class="sc-row"><span class="sc-k">階段</span><span class="sc-v">${esc(m.phase||'—')}</span></div>
       <div class="sc-row sc-foot"><span><b>進度：${(+m.progress||0)}%</b></span><span class="sc-eta">預計：${esc(m.eta||'—')}</span></div>
-    </div>`; }).join('')).join('');
+    </div>`; }).join('');
+  const techRightTitle=featMod.length?'重點技術':'新技術／需關注';
   const techSummary=byCat.map(c=>`<span class="sum-i"><i style="background:${c.color}"></i>${esc(c.name)}：${c.list.length} 項</span>`).join('')
     +`<span class="sum-i sum-total">總計：${mods.length} 項</span>`;
   const css=`*{box-sizing:border-box;margin:0;padding:0;font-family:"Microsoft JhengHei","PingFang TC","Heiti TC",sans-serif;}
@@ -1737,12 +1768,14 @@ function openReport(){
     .rpt-head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #1f4e96;padding-bottom:10px;margin-bottom:12px;}
     .rpt-sub{font-size:14px;color:#6b7a90;letter-spacing:1px;}
     .rpt-title{font-size:32px;font-weight:800;color:#1f4e96;line-height:1.1;margin-top:2px;}
+    .rpt-right{display:flex;flex-direction:column;align-items:flex-end;gap:6px;}
     .rpt-upd{font-size:12px;color:#6b7a90;text-align:right;line-height:1.5;}
-    .headline{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;background:linear-gradient(135deg,#16324f,#1f4e96);color:#fff;border-radius:14px;padding:14px 20px;margin-bottom:14px;}
-    .hl-k{font-size:14px;font-weight:700;opacity:.9;}
-    .hl-v{font-size:34px;font-weight:800;}
-    .hl-u{font-size:14px;font-weight:600;opacity:.9;}
-    .hl-d{font-size:12px;opacity:.82;margin-left:auto;}
+    .eff-chip{display:inline-flex;align-items:baseline;gap:7px;background:linear-gradient(135deg,#16324f,#1f4e96);color:#fff;border-radius:10px;padding:6px 13px;}
+    .eff-k{font-size:11px;font-weight:700;opacity:.9;}
+    .eff-v{font-size:21px;font-weight:800;}
+    .eff-u{font-size:11px;font-weight:600;opacity:.9;}
+    .block-title{font-size:13px;font-weight:800;color:#1f4e96;margin-bottom:8px;}
+    .domtag{display:inline-block;color:#fff;font-size:10px;font-weight:700;padding:1px 7px;border-radius:99px;margin-right:6px;}
     .summary{display:flex;flex-wrap:wrap;gap:18px;margin:0 0 14px;font-size:13px;font-weight:700;color:#445;}
     .sum-i{display:inline-flex;align-items:center;gap:6px;}
     .sum-i i{width:11px;height:11px;border-radius:3px;display:inline-block;}
@@ -1792,7 +1825,7 @@ function openReport(){
     .pc-stats{display:flex;justify-content:space-between;font-size:11.5px;color:#445;gap:4px;}
     .pc-foot{font-size:11px;color:#6b7a90;margin-top:6px;padding-top:6px;border-top:1px dashed #e3e9f3;}
     .legend{font-size:11px;color:#6b7a90;margin-top:8px;}
-    @media print{.rpt-btns{display:none;} body{padding:12px 16px;} .kpi,.headline,.chart .bar,.pc-bar i,.kpi-bar i{-webkit-print-color-adjust:exact;print-color-adjust:exact;box-shadow:none;}}`;
+    @media print{.rpt-btns{display:none;} body{padding:12px 16px;} .kpi,.eff-chip,.chart .bar,.pc-bar i,.kpi-bar i,.domtag{-webkit-print-color-adjust:exact;print-color-adjust:exact;box-shadow:none;}}`;
   const html=`<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="UTF-8">
     <title>${esc(deptName)} 進度總表</title><style>${css}</style></head><body>
     <div class="rpt-btns">
@@ -1802,19 +1835,21 @@ function openReport(){
     <div class="rpt-head"><div>
       <div class="rpt-sub">${esc(deptName)}</div>
       <div class="rpt-title" id="rpt-title">專案進度總表</div>
-    </div><div class="rpt-upd">Update<br>${esc(today)}</div></div>
-    <div class="headline"><span class="hl-k">部門人均產出效益</span><span class="hl-v">${eff.perHead}</span><span class="hl-u">萬元/年·人</span><span class="hl-d">總效益 ${eff.benefit} 萬元/年 ÷ 投入 ${Math.round(eff.heads*10)/10} 人</span></div>
+    </div><div class="rpt-right">
+      <div class="eff-chip" title="總效益 ${eff.benefit} 萬元/年 ÷ 投入 ${Math.round(eff.heads*10)/10} 人"><span class="eff-k">人均效益</span><span class="eff-v">${eff.perHead}</span><span class="eff-u">萬/年·人</span></div>
+      <div class="rpt-upd">Update ${esc(today)}</div>
+    </div></div>
     <section id="sec-proj">
       <div class="summary">${projSummary}</div>
       <div class="grid2">
-        <div><div class="kpis">${projKpiHTML}</div><div class="chart-box"><div class="chart-title">${esc(deptName)} 各專案進度</div>${barChartHTML(projBarItems)}</div></div>
-        <div><div class="cards">${projCardHTML}</div><div class="legend">藍框＝需關注專案（新評估／衝刺中／延遲）</div></div>
+        <div><div class="kpis">${projKpiHTML}</div><div class="chart-box"><div class="chart-title">${esc(deptName)} 各專案進度（Mobility／Display）</div>${barChartHTML(projBarItems)}</div></div>
+        <div><div class="block-title">⭐ ${projRightTitle}</div><div class="cards">${projCardHTML}</div><div class="legend">藍框＝需關注專案（新評估／衝刺中／延遲）。可由「報告重點設定」自訂顯示專案。</div></div>
       </div></section>
     <section id="sec-tech" style="display:none">
       <div class="summary">${techSummary}</div>
       <div class="grid2">
         <div><div class="kpis">${techKpiHTML}</div><div class="chart-box"><div class="chart-title">${esc(deptName)} 新技術完成度</div>${barChartHTML(techBarItems)}</div></div>
-        <div><div class="cards">${techCardHTML}</div><div class="legend">藍框＝需關注（新技術／衝刺中／延遲）　紫標＝新技術</div></div>
+        <div><div class="block-title">⭐ ${techRightTitle}</div><div class="cards">${techCardHTML}</div><div class="legend">藍框＝需關注（新技術／衝刺中／延遲）　紫標＝新技術。可由「報告重點設定」自訂顯示技術。</div></div>
       </div></section>
     <script>function showRpt(m){var p=m==='proj';document.getElementById('sec-proj').style.display=p?'block':'none';document.getElementById('sec-tech').style.display=p?'none':'block';document.getElementById('tb-proj').className=p?'on':'';document.getElementById('tb-tech').className=p?'':'on';document.getElementById('rpt-title').textContent=p?'專案進度總表':'新技術進度總表';}<\/script>
     </body></html>`;
@@ -1822,10 +1857,23 @@ function openReport(){
   if(!w){ alert('瀏覽器阻擋了新視窗，請允許彈出視窗後再試一次。'); return; }
   w.document.open(); w.document.write(html); w.document.close();
 }
+// 報告重點設定：勾選報告右側要顯示哪些重點專案／技術
+function openReportConfig(){
+  const rf=DATA.meta.reportFeature||{projects:[],modules:[]};
+  openModal(`<h3>報告重點設定</h3>
+    <div class="hint" style="margin-bottom:8px">勾選要顯示在 One-Page 報告「右側區塊」的重點專案與技術。未勾選時，系統會自動帶出「需關注／新技術」項目。</div>
+    <div class="field"><label>重點專案（顯示於專案總表右側）</label>${checkboxGrid('rf_projs',DATA.projects.map(p=>({id:p.id,label:p.name})),rf.projects||[])}</div>
+    <div class="field"><label>重點技術（顯示於技術總表右側）</label>${checkboxGrid('rf_mods',DATA.modules.map(m=>({id:m.id,label:m.name})),rf.modules||[])}</div>
+    <div class="modal-foot"><button class="btn ghost" onclick="closeModal()">取消</button><button class="btn" onclick="saveReportConfig(false)">儲存</button><button class="btn" onclick="saveReportConfig(true)">儲存並開啟報告</button></div>`);
+}
+function saveReportConfig(open){
+  DATA.meta.reportFeature={projects:getChecked('rf_projs'),modules:getChecked('rf_mods')};
+  save(); closeModal(); if(open) openReport();
+}
 function toggleDataMenu(e){ e.stopPropagation(); const m=document.getElementById('dataMenu'); m.style.display=(m.style.display==='none')?'block':'none'; }
 function closeDataMenu(){ const m=document.getElementById('dataMenu'); if(m) m.style.display='none'; }
 document.addEventListener('click', closeDataMenu);
-function resetData(){ if(confirm('重置為範例資料？目前資料會被覆蓋（建議先匯出備份）。')){ DATA=JSON.parse(JSON.stringify(DEFAULT_DATA)); save(); render(); } }
+function resetData(){ if(confirm('重置為範例資料？目前資料會被覆蓋（建議先匯出備份）。')){ DATA=migrate(JSON.parse(JSON.stringify(DEFAULT_DATA))); save(); render(); } }
 
 /* ---------- Excel 匯入（讀取「部門資料盤點範本.xlsx」） ---------- */
 function splitNames(s){ return String(s==null?'':s).split(/[、,，\n;；]+/).map(x=>x.trim()).filter(Boolean); }
