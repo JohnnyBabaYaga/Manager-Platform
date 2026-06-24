@@ -176,6 +176,9 @@
   <div class="menu-wrap">
     <button onclick="toggleDataMenu(event)" title="匯入／匯出">💾</button>
     <div id="dataMenu" class="menu" style="display:none" onclick="event.stopPropagation()">
+      <div class="menu-sec">報告</div>
+      <button class="menu-item" onclick="openTechReport();closeDataMenu()">📊 技術總表（列印報告）</button>
+      <div class="menu-div"></div>
       <div class="menu-sec">匯出</div>
       <button class="menu-item" onclick="exportHTML();closeDataMenu()">📦 完整網頁（可攜，最簡單）</button>
       <button class="menu-item" onclick="exportExcel();closeDataMenu()">📊 Excel 資料表</button>
@@ -1638,6 +1641,107 @@ function exportExcel(){
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(projRows), '表2_專案效益');
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(modRows), '表3_模塊');
   XLSX.writeFile(wb, '部門資料-'+DATA.meta.updated+'.xlsx');
+}
+// 技術總表 One-Page 報告：依模塊分類做 KPI、長條圖、狀態卡，可直接列印／另存 PDF
+function openTechReport(){
+  const cats=(DATA.moduleCats||[]).slice();
+  const mods=(DATA.modules||[]).slice();
+  if(!mods.length){ alert('目前沒有技術模塊資料，無法生成總表。'); return; }
+  const deptName=(DATA.department&&DATA.department.name)||DATA.meta.title||'部門';
+  const today=DATA.meta.updated||new Date().toISOString().slice(0,10);
+  // 分類 → 模塊清單、平均完成度
+  const byCat=cats.map(c=>{ const list=mods.filter(m=>(m.category||'')===c.name);
+    const pct=list.length?Math.round(list.reduce((a,m)=>a+(+m.progress||0),0)/list.length):0;
+    return {name:c.name,color:c.color,list,pct}; });
+  // 未歸類的模塊也納入
+  const known=new Set(cats.map(c=>c.name));
+  const orphan=mods.filter(m=>!known.has(m.category||''));
+  if(orphan.length) byCat.push({name:'其他',color:'#8a93a6',list:orphan,pct:Math.round(orphan.reduce((a,m)=>a+(+m.progress||0),0)/orphan.length)});
+  // KPI 卡片
+  const kpiHTML=byCat.map(c=>`<div class="kpi" style="background:${c.color}">
+      <div class="kpi-top"><span class="kpi-name">${esc(c.name)}</span><span class="kpi-pct">${c.pct}%</span></div>
+      <div class="kpi-meta">${c.list.length} 項</div>
+      <div class="kpi-bar"><i style="width:${c.pct}%"></i></div></div>`).join('');
+  // 長條圖（依分類順序、分類內依進度高→低）
+  const barItems=[]; byCat.forEach(c=>c.list.slice().sort((a,b)=>(+b.progress||0)-(+a.progress||0)).forEach(m=>barItems.push({m,color:c.color})));
+  const barHTML=barItems.map(({m,color})=>{ const v=+m.progress||0; return `<div class="bcol">
+      <div class="bval">${v}</div>
+      <div class="btrack"><div class="bfill" style="height:${v}%;background:${color}"></div></div>
+      <div class="blbl">${esc(m.name)}</div></div>`; }).join('');
+  // 狀態卡片
+  const stat=s=>{ if(s==='New')return['New','st-new']; if(s==='延遲'||s==='Delay')return['延遲','st-warn']; return['正常','st-ok']; };
+  const cardHTML=byCat.map(c=>c.list.map(m=>{ const[lbl,cls]=stat(m.status); const isNew=(m.status==='New');
+    return `<div class="scard${isNew?' is-new':''}">
+      <div class="sc-head"><span class="sc-name">${esc(m.name)}</span><span class="sbadge ${cls}">${lbl}</span></div>
+      <div class="sc-row"><span class="sc-k">階段</span><span class="sc-v">${esc(m.phase||'—')}</span></div>
+      <div class="sc-row sc-foot"><span><b>進度：${(+m.progress||0)}%</b></span><span class="sc-eta">預計：${esc(m.eta||'—')}</span></div>
+    </div>`; }).join('')).join('');
+  const totalCount=mods.length;
+  const summaryHTML=byCat.map(c=>`<span class="sum-i"><i style="background:${c.color}"></i>${esc(c.name)}：${c.list.length} 項</span>`).join('')
+    +`<span class="sum-i sum-total">總計：${totalCount} 項</span>`;
+  const css=`*{box-sizing:border-box;margin:0;padding:0;font-family:"Microsoft JhengHei","PingFang TC","Heiti TC",sans-serif;}
+    body{background:#fff;color:#1c2b45;padding:30px 36px;}
+    .rpt-head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #1f4e96;padding-bottom:10px;margin-bottom:6px;}
+    .rpt-sub{font-size:14px;color:#6b7a90;letter-spacing:1px;}
+    .rpt-title{font-size:34px;font-weight:800;color:#1f4e96;line-height:1.1;margin-top:2px;}
+    .rpt-upd{font-size:12px;color:#6b7a90;text-align:right;line-height:1.5;}
+    .summary{display:flex;flex-wrap:wrap;gap:18px;margin:10px 0 18px;font-size:13px;font-weight:700;color:#445;}
+    .sum-i{display:inline-flex;align-items:center;gap:6px;}
+    .sum-i i{width:11px;height:11px;border-radius:3px;display:inline-block;}
+    .sum-total{color:#1f4e96;}
+    .grid2{display:grid;grid-template-columns:1.05fr 1fr;gap:22px;align-items:start;}
+    .kpis{display:flex;gap:14px;margin-bottom:16px;}
+    .kpi{flex:1;border-radius:14px;padding:14px 16px;color:#fff;box-shadow:0 4px 12px rgba(31,78,150,.18);}
+    .kpi-top{display:flex;justify-content:space-between;align-items:baseline;}
+    .kpi-name{font-size:15px;font-weight:700;opacity:.95;}
+    .kpi-pct{font-size:34px;font-weight:800;}
+    .kpi-meta{font-size:12px;opacity:.85;margin-top:2px;}
+    .kpi-bar{height:7px;background:rgba(255,255,255,.35);border-radius:99px;margin-top:8px;overflow:hidden;}
+    .kpi-bar i{display:block;height:100%;background:#fff;border-radius:99px;}
+    .chart-box{border:1px solid #e3e9f3;border-radius:14px;padding:16px 14px 8px;}
+    .chart-title{font-size:14px;font-weight:700;color:#445;text-align:center;margin-bottom:10px;}
+    .bars{display:flex;align-items:flex-end;gap:8px;height:240px;padding:0 4px;}
+    .bcol{flex:1;display:flex;flex-direction:column;align-items:center;height:100%;justify-content:flex-end;}
+    .btrack{width:100%;max-width:46px;height:200px;display:flex;align-items:flex-end;}
+    .bfill{width:100%;border-radius:6px 6px 0 0;min-height:3px;}
+    .bval{font-size:12px;font-weight:700;color:#445;margin-bottom:3px;}
+    .blbl{font-size:10px;color:#667;margin-top:5px;text-align:center;line-height:1.15;word-break:break-word;}
+    .cards{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+    .scard{border:1px solid #d9e1ee;border-radius:11px;padding:10px 12px;background:#fff;}
+    .scard.is-new{border-color:#2bb4e0;border-width:2px;}
+    .sc-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
+    .sc-name{font-size:14px;font-weight:800;color:#1c2b45;}
+    .sbadge{font-size:11px;font-weight:700;padding:2px 9px;border-radius:99px;}
+    .st-ok{background:rgba(54,179,126,.16);color:#2a8c61;}
+    .st-new{background:rgba(43,180,224,.16);color:#1c8bb0;}
+    .st-warn{background:rgba(224,86,63,.16);color:#e0563f;}
+    .sc-row{font-size:12px;color:#445;display:flex;gap:8px;margin-top:2px;}
+    .sc-k{color:#8a93a6;min-width:30px;}
+    .sc-v{flex:1;}
+    .sc-foot{justify-content:space-between;margin-top:6px;padding-top:6px;border-top:1px dashed #e3e9f3;}
+    .sc-eta{color:#8a93a6;}
+    .rpt-btns{margin-bottom:14px;}
+    .rpt-btns button{background:#1f4e96;color:#fff;border:none;padding:8px 18px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;margin-right:8px;}
+    .rpt-btns button.ghost{background:#fff;color:#1f4e96;border:1px solid #1f4e96;}
+    @media print{.rpt-btns{display:none;} body{padding:14px 18px;} .kpi{box-shadow:none;-webkit-print-color-adjust:exact;print-color-adjust:exact;}}`;
+  const html=`<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="UTF-8">
+    <title>${esc(deptName)} 新技術進度總表</title><style>${css}</style></head><body>
+    <div class="rpt-btns"><button onclick="window.print()">🖨 列印 / 存成 PDF</button><button class="ghost" onclick="window.close()">關閉</button></div>
+    <div class="rpt-head"><div>
+      <div class="rpt-sub">${esc(deptName)}</div>
+      <div class="rpt-title">新技術進度總表</div>
+    </div><div class="rpt-upd">Update<br>${esc(today)}</div></div>
+    <div class="summary">${summaryHTML}</div>
+    <div class="grid2">
+      <div>
+        <div class="kpis">${kpiHTML}</div>
+        <div class="chart-box"><div class="chart-title">${esc(deptName)} 新技術完成度</div><div class="bars">${barHTML}</div></div>
+      </div>
+      <div class="cards">${cardHTML}</div>
+    </div></body></html>`;
+  const w=window.open('','_blank');
+  if(!w){ alert('瀏覽器阻擋了新視窗，請允許彈出視窗後再試一次。'); return; }
+  w.document.open(); w.document.write(html); w.document.close();
 }
 function toggleDataMenu(e){ e.stopPropagation(); const m=document.getElementById('dataMenu'); m.style.display=(m.style.display==='none')?'block':'none'; }
 function closeDataMenu(){ const m=document.getElementById('dataMenu'); if(m) m.style.display='none'; }
