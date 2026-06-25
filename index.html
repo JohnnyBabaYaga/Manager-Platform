@@ -152,6 +152,22 @@
   .checkbox-grid label{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:500;color:var(--text);white-space:nowrap;}
   .checkbox-grid input[type=checkbox]{width:auto;flex:0 0 auto;margin:0;padding:0;}
   .modal-foot{display:flex;justify-content:flex-end;gap:8px;margin-top:16px;}
+  .rs-tools{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+  .rs-count{font-size:12px;color:var(--muted);margin-left:auto;}
+  .rs-wrap{max-height:46vh;overflow:auto;display:flex;flex-direction:column;gap:10px;}
+  .rs-dom{border:1px solid var(--line);border-radius:12px;overflow:hidden;}
+  .rs-domh{color:#fff;font-weight:800;font-size:13px;padding:6px 12px;display:flex;align-items:center;gap:8px;}
+  .rs-mini{margin-left:8px;background:rgba(255,255,255,.25);color:#fff;border:1px solid rgba(255,255,255,.5);border-radius:8px;font-size:11px;font-weight:700;padding:2px 8px;cursor:pointer;}
+  .rs-mini:last-child{margin-left:4px;}
+  .rs-pl{padding:6px 12px;border-top:1px solid var(--line);}
+  .rs-plh{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text);cursor:pointer;}
+  .rs-plh.muted{color:var(--muted);cursor:default;}
+  .rs-plh input{width:auto;margin:0;}
+  .rs-cnt{font-size:11px;color:var(--muted);font-weight:600;}
+  .rs-empty{font-size:11px;color:var(--muted);}
+  .rs-projs{display:grid;grid-template-columns:1fr 1fr;gap:3px 12px;padding:6px 0 2px 22px;}
+  .rs-proj{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:500;color:var(--text);white-space:nowrap;cursor:pointer;}
+  .rs-proj input{width:auto;margin:0;}
   .match-result{margin-top:18px;}
   .empty{color:var(--muted);text-align:center;padding:40px;font-size:13px;}
   .pill-sel{display:flex;flex-wrap:wrap;gap:6px;}
@@ -177,7 +193,7 @@
     <button onclick="toggleDataMenu(event)" title="匯入／匯出">💾</button>
     <div id="dataMenu" class="menu" style="display:none" onclick="event.stopPropagation()">
       <div class="menu-sec">報告</div>
-      <button class="menu-item" onclick="openReport();closeDataMenu()">📊 One-Page 報告（專案／技術）</button>
+      <button class="menu-item" onclick="openReportScope();closeDataMenu()">📊 One-Page 報告（專案／技術）</button>
       <button class="menu-item" onclick="openReportConfig();closeDataMenu()">⭐ 報告重點設定（右側區塊）</button>
       <div class="menu-div"></div>
       <div class="menu-sec">匯出</div>
@@ -353,6 +369,10 @@ function migrate(d){ // 相容舊資料：補上新欄位
   if(!d.meta.reportFeature||typeof d.meta.reportFeature!=='object') d.meta.reportFeature={projects:[],modules:[]};
   if(!Array.isArray(d.meta.reportFeature.projects)) d.meta.reportFeature.projects=[];
   if(!Array.isArray(d.meta.reportFeature.modules)) d.meta.reportFeature.modules=[];
+  // 報告範圍：本份報告要納入哪些 Pillar／專案（空陣列＝全部納入）
+  if(!d.meta.reportScope||typeof d.meta.reportScope!=='object') d.meta.reportScope={pillars:[],projects:[]};
+  if(!Array.isArray(d.meta.reportScope.pillars)) d.meta.reportScope.pillars=[];
+  if(!Array.isArray(d.meta.reportScope.projects)) d.meta.reportScope.projects=[];
   if(d.meta.schemaVersion==null) d.meta.schemaVersion=DEFAULT_DATA.meta.schemaVersion;
   if(!d.department) d.department=JSON.parse(JSON.stringify(DEFAULT_DATA.department));
   // setup 旗標：判斷此份資料是否已完成部門設定（有部門名稱即視為已設定，相容舊資料）
@@ -1695,9 +1715,11 @@ function openReport(){
   const featProj=((DATA.meta.reportFeature||{}).projects)||[];
   const featMod=((DATA.meta.reportFeature||{}).modules)||[];
   /* ===== 專案總表（依 Pillar 分 Mobility／Display） ===== */
-  const projs=(DATA.projects||[]).slice();
-  // 領域順序：先依 pillars 定義出現順序，未指派者歸「未分類」殿後
-  const domOrder=[...new Set((DATA.pillars||[]).map(x=>x.domain))];
+  // 報告範圍：只納入勾選的專案（空＝全部）
+  const scopeProj=((DATA.meta.reportScope||{}).projects)||[];
+  const projs=(DATA.projects||[]).slice().filter(p=> scopeProj.length? scopeProj.includes(p.id): true);
+  // 領域順序：依 pillars 定義順序，但只保留範圍內實際有專案的領域；未指派者歸「未分類」殿後
+  const domOrder=[...new Set((DATA.pillars||[]).map(x=>x.domain))].filter(dm=>projs.some(p=>projDomain(p)===dm));
   if(projs.some(p=>projDomain(p)==='未分類')) domOrder.push('未分類');
   const domKpi=domOrder.map(dm=>{ const ps=projs.filter(p=>projDomain(p)===dm); if(!ps.length) return null;
       const avg=Math.round(ps.reduce((a,p)=>a+projProgress(p),0)/ps.length);
@@ -1842,7 +1864,7 @@ function openReport(){
     <section id="sec-proj">
       <div class="summary">${projSummary}</div>
       <div class="grid2">
-        <div><div class="kpis">${projKpiHTML}</div><div class="chart-box"><div class="chart-title">${esc(deptName)} 各專案進度（Mobility／Display）</div>${barChartHTML(projBarItems)}</div></div>
+        <div><div class="kpis">${projKpiHTML}</div><div class="chart-box"><div class="chart-title">${esc(deptName)} 各專案進度${domOrder.length?'（'+domOrder.join('／')+'）':''}</div>${barChartHTML(projBarItems)}</div></div>
         <div><div class="block-title">⭐ ${projRightTitle}</div><div class="cards">${projCardHTML}</div><div class="legend">藍框＝需關注專案（新評估／衝刺中／延遲）。可由「報告重點設定」自訂顯示專案。</div></div>
       </div></section>
     <section id="sec-tech" style="display:none">
@@ -1858,6 +1880,44 @@ function openReport(){
   w.document.open(); w.document.write(html); w.document.close();
 }
 // 報告重點設定：勾選報告右側要顯示哪些重點專案／技術
+/* ===== 報告範圍選擇（生成前跳出）：依 Pillar 樹狀勾選＋專案微調 ===== */
+function openReportScope(){
+  const scope=DATA.meta.reportScope||{pillars:[],projects:[]};
+  const sel=scope.projects||[];
+  const preCheck=id=> sel.length? sel.includes(id) : true; // 空選＝全部納入：預設全勾，供取消
+  const domOrder=[...new Set((DATA.pillars||[]).map(x=>x.domain))];
+  const blocks=domOrder.map(dm=>{
+    const pls=(DATA.pillars||[]).filter(x=>x.domain===dm);
+    const dc=domainColor(dm);
+    const plRows=pls.map(pl=>{
+      const ps=(DATA.projects||[]).filter(p=>p.pillarId===pl.id);
+      if(!ps.length) return `<div class="rs-pl"><label class="rs-plh muted"><input type="checkbox" disabled> ${esc(pl.name)} <span class="rs-empty">（無對應專案）</span></label></div>`;
+      const allOn=ps.every(p=>preCheck(p.id)), someOn=ps.some(p=>preCheck(p.id));
+      const projChk=ps.map(p=>`<label class="rs-proj"><input type="checkbox" name="rs_projs" value="${p.id}" data-pl="${pl.id}" ${preCheck(p.id)?'checked':''} onchange="rsSyncPillar('${pl.id}')"> ${esc(p.name)}</label>`).join('');
+      return `<div class="rs-pl">
+        <label class="rs-plh"><input type="checkbox" class="rs-pcb" data-pl="${pl.id}" ${allOn?'checked':''} onclick="rsTogglePillar('${pl.id}',this.checked)"> <b>${esc(pl.name)}</b> <span class="rs-cnt">${ps.length} 案</span></label>
+        <div class="rs-projs">${projChk}</div></div>`;
+    }).join('');
+    return `<div class="rs-dom"><div class="rs-domh" style="background:${dc}">${esc(dm)} <button type="button" class="rs-mini" onclick="rsToggleDomain('${esc(dm)}',true)">全選</button><button type="button" class="rs-mini" onclick="rsToggleDomain('${esc(dm)}',false)">清除</button></div>${plRows}</div>`;
+  }).join('');
+  // 未指派 Pillar 的專案
+  const plIds=new Set((DATA.pillars||[]).map(x=>x.id));
+  const orphans=(DATA.projects||[]).filter(p=>!plIds.has(p.pillarId));
+  const orphanBlock=orphans.length?`<div class="rs-dom"><div class="rs-domh" style="background:#8a93a6">未分類（未指派 Pillar）</div><div class="rs-projs" style="padding:6px 10px">${orphans.map(p=>`<label class="rs-proj"><input type="checkbox" name="rs_projs" value="${p.id}" ${preCheck(p.id)?'checked':''}> ${esc(p.name)}</label>`).join('')}</div></div>`:'';
+  openModal(`<h3>生成報告：選擇範圍</h3>
+    <div class="hint" style="margin-bottom:8px">勾選本份報告要納入的 Pillar 與專案。勾／取消 Pillar 會連動其下專案，亦可單獨微調個別專案。未勾選任何項目時＝全部納入。</div>
+    <div class="rs-tools"><button type="button" class="btn ghost sm" onclick="rsToggleAll(true)">全選</button><button type="button" class="btn ghost sm" onclick="rsToggleAll(false)">全部清除</button><span class="rs-count" id="rsCount"></span></div>
+    <div class="rs-wrap">${blocks}${orphanBlock}</div>
+    <div class="modal-foot"><button class="btn ghost" onclick="closeModal()">取消</button><button class="btn" onclick="applyReportScope()">開始生成報告</button></div>`);
+  (DATA.pillars||[]).forEach(pl=>rsSyncPillar(pl.id));
+  rsUpdateCount();
+}
+function rsTogglePillar(plid,checked){ document.querySelectorAll(`input[name="rs_projs"][data-pl="${plid}"]`).forEach(c=>c.checked=checked); rsUpdateCount(); }
+function rsSyncPillar(plid){ const boxes=[...document.querySelectorAll(`input[name="rs_projs"][data-pl="${plid}"]`)]; const cb=document.querySelector(`.rs-pcb[data-pl="${plid}"]`); if(cb&&boxes.length){ const on=boxes.filter(b=>b.checked).length; cb.checked=on===boxes.length; cb.indeterminate=on>0&&on<boxes.length; } rsUpdateCount(); }
+function rsToggleDomain(dm,checked){ (DATA.pillars||[]).filter(x=>x.domain===dm).forEach(pl=>{ document.querySelectorAll(`input[name="rs_projs"][data-pl="${pl.id}"]`).forEach(c=>c.checked=checked); const cb=document.querySelector(`.rs-pcb[data-pl="${pl.id}"]`); if(cb){cb.checked=checked;cb.indeterminate=false;} }); rsUpdateCount(); }
+function rsToggleAll(checked){ document.querySelectorAll('input[name="rs_projs"]').forEach(c=>c.checked=checked); document.querySelectorAll('.rs-pcb').forEach(cb=>{cb.checked=checked;cb.indeterminate=false;}); rsUpdateCount(); }
+function rsUpdateCount(){ const el=document.getElementById('rsCount'); if(!el) return; const on=getChecked('rs_projs').length, tot=document.querySelectorAll('input[name="rs_projs"]').length; el.textContent=`已選 ${on} / ${tot} 案${on===0?'（＝全部納入）':''}`; }
+function applyReportScope(){ const sel=getChecked('rs_projs'); const tot=document.querySelectorAll('input[name="rs_projs"]').length; DATA.meta.reportScope={pillars:[],projects:(sel.length===tot?[]:sel)}; save(); closeModal(); openReport(); }
 function openReportConfig(){
   const rf=DATA.meta.reportFeature||{projects:[],modules:[]};
   openModal(`<h3>報告重點設定</h3>
