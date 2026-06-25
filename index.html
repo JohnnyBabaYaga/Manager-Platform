@@ -1799,12 +1799,15 @@ function rpReportShell(opts){
     .kpis{flex:1;display:grid;gap:10px;margin-bottom:14px;grid-auto-rows:1fr;}
     .kpi{border-radius:14px;padding:14px 16px;color:#fff;display:flex;flex-direction:column;justify-content:space-between;min-height:118px;}
     .kpi-name{font-size:14px;font-weight:800;line-height:1.15;}
+    .kpi-mid{display:flex;justify-content:space-between;align-items:flex-end;gap:8px;}
     .kpi-pct{font-size:34px;font-weight:900;line-height:1;}
+    .kpi-eff{text-align:right;font-size:10px;opacity:.92;line-height:1.2;}
+    .kpi-eff b{font-size:18px;font-weight:900;}
     .kpi-bar{height:7px;background:rgba(255,255,255,.3);border-radius:5px;overflow:hidden;margin:4px 0;}
     .kpi-bar i{display:block;height:100%;background:#fff;border-radius:5px;}
     .kpi-meta{display:flex;flex-direction:column;gap:3px;font-size:11px;opacity:.95;}
     .kpi-stat{display:flex;gap:12px;}
-    .kpi-stat b,.kpi-eff b{font-size:13px;}
+    .kpi-stat b{font-size:13px;}
     .chart-title{text-align:center;font-size:14px;font-weight:800;color:#3a4a63;margin:2px 0 7px;}
     .chart{display:flex;gap:8px;padding-top:20px;}
     .yax{display:flex;flex-direction:column;justify-content:space-between;height:200px;font-size:11px;color:#9aa6b8;text-align:right;flex:0 0 auto;}
@@ -1864,8 +1867,9 @@ function buildProjReport(domain, ids){
   const perHeadTotal=theads?Math.round(tben/theads):0;
   const kpisHTML=stats.map(s=>`<div class="kpi" style="background:${s.gr.color}">
       <div class="kpi-name">${esc(s.gr.name)}</div>
-      <div><div class="kpi-pct">${s.avg}%</div><div class="kpi-bar"><i style="width:${s.avg}%"></i></div></div>
-      <div class="kpi-meta"><div class="kpi-stat"><span>${s.n} 條線</span><span>達成 <b>${s.done}</b></span><span>落後 <b>${s.late}</b></span></div><span class="kpi-eff">人均 <b>${s.perHead}</b> 萬/人</span></div></div>`).join('');
+      <div class="kpi-mid"><div class="kpi-pct">${s.avg}%</div><div class="kpi-eff">人均效益<br><b>${s.perHead}</b> 萬/人</div></div>
+      <div class="kpi-bar"><i style="width:${s.avg}%"></i></div>
+      <div class="kpi-meta"><div class="kpi-stat"><span>${s.n} 條線</span><span>達成 <b>${s.done}</b></span><span>落後 <b>${s.late}</b></span></div></div></div>`).join('');
   const subtitle=stats.map(s=>`<span class="si"><span class="dot" style="background:${s.gr.color}"></span>${esc(s.gr.name)}：${s.n} 條</span>`).join('')
     +`<span class="si tot">總計：${list.length} 條</span>`;
   const barItems=groups.flatMap(gr=>list.filter(p=>p.group===gr.id).sort((a,b)=>projProgress(b)-projProgress(a))
@@ -1904,8 +1908,9 @@ function buildTechReport(domain, ids){
   const perHeadTotal=theads?Math.round(tben/theads):0;
   const kpisHTML=stats.map(s=>`<div class="kpi" style="background:${s.color}">
       <div class="kpi-name">${esc(s.cat)}</div>
-      <div><div class="kpi-pct">${s.avg}%</div><div class="kpi-bar"><i style="width:${s.avg}%"></i></div></div>
-      <div class="kpi-meta"><div class="kpi-stat"><span>${s.n} 項</span><span>達成 <b>${s.done}</b></span><span>落後 <b>${s.late}</b></span></div><span class="kpi-eff">人均 <b>${s.perHead}</b> 萬/人</span></div></div>`).join('');
+      <div class="kpi-mid"><div class="kpi-pct">${s.avg}%</div><div class="kpi-eff">人均效益<br><b>${s.perHead}</b> 萬/人</div></div>
+      <div class="kpi-bar"><i style="width:${s.avg}%"></i></div>
+      <div class="kpi-meta"><div class="kpi-stat"><span>${s.n} 項</span><span>達成 <b>${s.done}</b></span><span>落後 <b>${s.late}</b></span></div></div></div>`).join('');
   const subtitle=stats.map(s=>`<span class="si"><span class="dot" style="background:${s.color}"></span>${esc(s.cat)}：${s.n} 項</span>`).join('')
     +`<span class="si tot">總計：${list.length} 項</span>`;
   const barItems=catNames.flatMap(cat=>list.filter(m=>(m.category||'未分類')===cat).sort((a,b)=>(+b.progress||0)-(+a.progress||0))
