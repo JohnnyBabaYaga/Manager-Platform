@@ -293,7 +293,7 @@ const DEFAULT_DATA = {
   pillars:[
     {id:'pl1', domain:'Mobility', name:'3D 量檢平台'},
     {id:'pl2', domain:'Mobility', name:'車用顯像平台'},
-    {id:'pl3', domain:'Mobility', name:'全球插線'},
+    {id:'pl3', domain:'Mobility', name:'全球擴線'},
     {id:'pl4', domain:'Display', name:'uLED'},
     {id:'pl5', domain:'Display', name:'低軌衛星'}
   ],
@@ -343,6 +343,7 @@ function migrate(d){ // 相容舊資料：補上新欄位
   // 一次性：技術分類配色改採與「廠區（專案）」相同的柔和色盤（之後使用者自行調色不再覆蓋）
   if(!d.meta) d.meta={};
   if(!d.meta.catPaletteV2){ (d.moduleCats||[]).forEach((c,i)=>{ c.color=pickColor(i); }); d.meta.catPaletteV2=true; }
+  (d.pillars||[]).forEach(p=>{ if(p.name==='全球插線') p.name='全球擴線'; }); // 修正錯字：插線→擴線
   (d.groups||[]).forEach(gr=>{ if(!gr.color) gr.color='#5b8def'; });
   (d.members||[]).forEach(u=>{ if(u.teamId==null) u.teamId=''; });
   if(!d.domainColors) d.domainColors = JSON.parse(JSON.stringify(DEFAULT_DATA.domainColors));
@@ -1712,7 +1713,7 @@ function reportPickerHTML(){
   const typeBtns=[['proj','專案進度（擴線）'],['tech','新技術進度']].map(([k,l])=>
     `<button type="button" class="rp-tab${RP_TYPE===k?' on':''}" style="--tc:#1f4e96" onclick="rpSetType('${k}')">${l}</button>`).join('');
   return `<h3>One-Page 報告產生器</h3>
-    <div class="hint" style="margin-bottom:10px">選擇 Pillar 與報告類型，再勾選本頁要涵蓋的項目。專案頁依「廠區」分區、技術頁依「技術分類」分區，並自動計算人均效益。未勾選任何項目＝全部納入。</div>
+    <div class="hint" style="margin-bottom:10px">選擇 Pillar 與報告類型，再勾選本頁要涵蓋的項目（最多 10 項，版面才不會過載）。專案頁依「廠區」分區、技術頁依「技術分類」分區，並自動計算人均效益。未勾選＝自動取前 10 項。</div>
     <div class="field"><label>Pillar（事業領域）</label><div class="rp-tabs">${domBtns}</div></div>
     <div class="field"><label>報告類型</label><div class="rp-tabs">${typeBtns}</div></div>
     <div class="field"><label id="rpItemsLabel">涵蓋項目</label>
@@ -1745,12 +1746,16 @@ function rpRefreshItems(){
   rpUpdateCount();
   box.querySelectorAll('input[name="rp_items"]').forEach(c=>c.addEventListener('change',rpUpdateCount));
 }
-function rpToggleAll(v){ document.querySelectorAll('input[name="rp_items"]').forEach(c=>c.checked=v); rpUpdateCount(); }
-function rpUpdateCount(){ const el=document.getElementById('rpCount'); if(!el) return; const on=getChecked('rp_items').length, tot=document.querySelectorAll('input[name="rp_items"]').length; el.textContent=`已選 ${on} / ${tot}${on===0?'（＝全部納入）':''}`; }
+const RP_MAX=10; // One-Page 版面最多顯示 10 個項目，避免資訊過載
+function rpToggleAll(v){ let n=0; document.querySelectorAll('input[name="rp_items"]').forEach(c=>{ c.checked = v && n<RP_MAX; if(c.checked) n++; }); rpUpdateCount(); }
+function rpUpdateCount(){ const el=document.getElementById('rpCount'); const boxes=[...document.querySelectorAll('input[name="rp_items"]')]; const on=boxes.filter(c=>c.checked).length;
+  boxes.forEach(c=>{ c.disabled = (!c.checked && on>=RP_MAX); }); // 已達上限時，鎖住其餘未勾選項目
+  if(el) el.textContent=`已選 ${on} / ${RP_MAX} 上限${on===0?'（＝自動取前 10 項）':''}`; }
 function generateReport(){
   const tot=document.querySelectorAll('input[name="rp_items"]').length;
-  let sel=getChecked('rp_items'); if(!sel.length){ // 空＝全部
+  let sel=getChecked('rp_items'); if(!sel.length){ // 空＝自動取前 10 項
     sel=[...document.querySelectorAll('input[name="rp_items"]')].map(c=>c.value); }
+  sel=sel.slice(0,RP_MAX); // 版面最多 10 項
   DATA.meta.reportSel[rpSelKey(RP_DOMAIN,RP_TYPE)]=(sel.length===tot?[]:sel); save();
   const html=(RP_TYPE==='proj')?buildProjReport(RP_DOMAIN,sel):buildTechReport(RP_DOMAIN,sel);
   closeModal();
@@ -1761,9 +1766,10 @@ function generateReport(){
 // 共用：長條圖（沿用總覽風格；依分類分群、群內由高到低）
 function rpBarChart(items){
   const ticks=[100,75,50,25,0];
-  const bars=items.map(it=>{const v=Math.max(0,Math.min(100,Math.round(+it.value||0)));
-    return `<div class="col"><div class="bar" style="height:${v}%;background:${it.color}"><span class="v">${Math.round(+it.value||0)}</span></div><div class="xl">${esc(it.label)}</div></div>`;}).join('');
-  return `<div class="chart"><div class="yax">${ticks.map(t=>`<span>${t}</span>`).join('')}</div><div class="plot"><div class="bars">${bars}</div></div></div>`;
+  const cols=items.map(it=>{const v=Math.max(0,Math.min(100,Math.round(+it.value||0)));
+    return `<div class="col"><div class="bar" style="height:${v}%;background:${it.color}"><span class="v">${Math.round(+it.value||0)}</span></div></div>`;}).join('');
+  const labels=items.map(it=>`<div class="xl">${esc(it.label)}</div>`).join('');
+  return `<div class="chart"><div class="yax">${ticks.map(t=>`<span>${t}</span>`).join('')}</div><div class="plot-col"><div class="plot"><div class="bars">${cols}</div></div><div class="xrow">${labels}</div></div></div>`;
 }
 function rpStatusBadge(raw){ const isNew=(raw==='New'); return `<span class="rp-badge ${isNew?'is-new':'is-ok'}">${isNew?'New':'正常'}</span>`; }
 function rpReportShell(opts){
@@ -1798,14 +1804,16 @@ function rpReportShell(opts){
     .kpi-meta{display:flex;flex-direction:column;gap:1px;font-size:10px;opacity:.95;}
     .kpi-eff b{font-size:11.5px;}
     .chart-title{text-align:center;font-size:14px;font-weight:800;color:#3a4a63;margin:2px 0 7px;}
-    .chart{display:flex;gap:8px;height:240px;}
-    .yax{display:flex;flex-direction:column;justify-content:space-between;font-size:11px;color:#9aa6b8;padding-bottom:42px;}
-    .plot{flex:1;border-left:1px solid #e2e7ef;border-bottom:1px solid #e2e7ef;}
-    .bars{display:flex;align-items:flex-end;height:100%;gap:3px;padding:0 4px;}
-    .col{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:100%;}
+    .chart{display:flex;gap:8px;padding-top:20px;}
+    .yax{display:flex;flex-direction:column;justify-content:space-between;height:200px;font-size:11px;color:#9aa6b8;text-align:right;flex:0 0 auto;}
+    .plot-col{flex:1;min-width:0;display:flex;flex-direction:column;}
+    .plot{height:200px;border-left:1px solid #e2e7ef;border-bottom:1px solid #e2e7ef;position:relative;}
+    .bars{position:absolute;inset:0;display:flex;align-items:flex-end;gap:3px;padding:0 5px;}
+    .col{flex:1;min-width:0;display:flex;align-items:flex-end;justify-content:center;height:100%;}
     .bar{width:74%;min-height:2px;border-radius:5px 5px 0 0;position:relative;display:flex;justify-content:center;}
-    .bar .v{position:absolute;top:-17px;font-size:11px;font-weight:700;color:#3a4a63;}
-    .xl{font-size:10px;color:#6b7a90;margin-top:5px;height:38px;writing-mode:vertical-rl;text-orientation:mixed;white-space:nowrap;overflow:hidden;}
+    .bar .v{position:absolute;top:-16px;font-size:11px;font-weight:700;color:#3a4a63;}
+    .xrow{display:flex;gap:3px;padding:6px 5px 0;}
+    .xl{flex:1;min-width:0;font-size:9.5px;color:#6b7a90;text-align:center;line-height:1.2;word-break:break-word;}
     .cards{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
     .rcard{border:1px solid #d7deea;border-radius:10px;padding:8px 11px;background:#fff;}
     .rcard.hot{border:2px solid #2f6fd0;box-shadow:0 2px 8px rgba(47,111,208,.12);}
