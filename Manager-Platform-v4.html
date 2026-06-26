@@ -159,6 +159,15 @@
   .pill-sel .p:hover{border-color:var(--blue2);transform:translateY(-1px);}
   .pill-sel .p.on{background:linear-gradient(120deg,var(--blue),var(--blue2));color:#fff;border-color:transparent;box-shadow:0 3px 10px rgba(31,78,150,.3);}
   .note{background:rgba(255,247,230,.8);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);border:1px solid #ffe1a8;color:#8a6d3b;padding:10px 14px;border-radius:var(--r-sm);font-size:12px;margin-bottom:14px;}
+  /* report picker（沿用玻璃膠囊風格，與其他視窗一致）*/
+  .rp-tabs{display:flex;flex-wrap:wrap;gap:6px;}
+  .rp-tab{display:inline-flex;align-items:center;gap:7px;padding:7px 15px;border:1px solid var(--line);border-radius:999px;cursor:pointer;font-size:12px;font-weight:700;color:var(--text);background:rgba(255,255,255,.6);transition:all .18s;}
+  .rp-tab:hover{border-color:var(--blue2);transform:translateY(-1px);}
+  .rp-tab.on{background:linear-gradient(120deg,var(--tc,var(--blue)),var(--blue2));color:#fff;border-color:transparent;box-shadow:0 3px 10px rgba(31,78,150,.3);}
+  .rp-tab-n{font-size:11px;font-weight:700;opacity:.75;background:rgba(120,140,170,.18);padding:1px 8px;border-radius:999px;}
+  .rp-tab.on .rp-tab-n{background:rgba(255,255,255,.28);opacity:1;}
+  .rs-tools{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+  .rs-count{font-size:11px;color:var(--muted);font-weight:600;margin-left:auto;}
 </style>
 </head>
 <body>
@@ -176,6 +185,9 @@
   <div class="menu-wrap">
     <button onclick="toggleDataMenu(event)" title="匯入／匯出">💾</button>
     <div id="dataMenu" class="menu" style="display:none" onclick="event.stopPropagation()">
+      <div class="menu-sec">報告</div>
+      <button class="menu-item" onclick="openReportPicker();closeDataMenu()">📊 One-Page 報告（依 Pillar）</button>
+      <div class="menu-div"></div>
       <div class="menu-sec">匯出</div>
       <button class="menu-item" onclick="exportHTML();closeDataMenu()">📦 完整網頁（可攜，最簡單）</button>
       <button class="menu-item" onclick="exportExcel();closeDataMenu()">📊 Excel 資料表</button>
@@ -225,7 +237,7 @@
 const STORE_KEY = 'managerPlatformData_v1';
 
 const DEFAULT_DATA = {
-  meta:{ updated:'2026-06-14', version:'v3.0', schemaVersion:3, title:'部門指揮中心', setup:false }, // v3.0：多部門化，每部門 link 自己的私有 data repo；department 區塊隨資料走，為未來集團總覽鋪路
+  meta:{ updated:'2026-06-14', version:'v4.0', schemaVersion:3, title:'部門指揮中心', setup:false }, // v4.0：新增依 Pillar 產出 One-Page 自動報告（人均效益）；沿用多部門資料模型
   // department：本份資料屬於哪個部門的自我描述（未來集團總覽彙整多份 data.json 時靠它識別）
   department:{ id:'', name:'', code:'', color:'#2f6fd0', manager:'', email:'' },
   groups:[
@@ -263,8 +275,8 @@ const DEFAULT_DATA = {
     {id:'m10', name:'HUD Test', category:'FIDM量檢測', progress:30, phase:'完成測項蒐集，評估量產檢測', eta:'待需求整合', status:'New', caps:['HUD','光學','顯示品質'], ownerIds:['u4']}
   ],
   moduleCats:[
-    {id:'mc1', name:'3D量檢測', color:'#2f6fd0'},
-    {id:'mc2', name:'FIDM量檢測', color:'#c9852a'}
+    {id:'mc1', name:'3D量檢測', color:'#8aa6c8'},
+    {id:'mc2', name:'FIDM量檢測', color:'#c9b85a'}
   ],
   teams:[
     {id:'t1', name:'3D量檢團隊', color:'#2f6fd0'},
@@ -281,7 +293,7 @@ const DEFAULT_DATA = {
   pillars:[
     {id:'pl1', domain:'Mobility', name:'3D 量檢平台'},
     {id:'pl2', domain:'Mobility', name:'車用顯像平台'},
-    {id:'pl3', domain:'Mobility', name:'全球插線'},
+    {id:'pl3', domain:'Mobility', name:'全球擴線'},
     {id:'pl4', domain:'Display', name:'uLED'},
     {id:'pl5', domain:'Display', name:'低軌衛星'}
   ],
@@ -325,9 +337,13 @@ function migrate(d){ // 相容舊資料：補上新欄位
   if(!d.teams) d.teams = JSON.parse(JSON.stringify(DEFAULT_DATA.teams));
   if(!d.moduleCats){ // 從既有模塊的 category 字串建立可編輯的分類實體
     const seen={}; d.moduleCats=[];
-    (d.modules||[]).forEach(m=>{ const c=(m.category||'未分類').trim(); if(c&&!seen[c]){ seen[c]=1; d.moduleCats.push({id:uid('mc'), name:c, color: c.includes('FIDM')?'#c9852a':'#2f6fd0'}); } });
+    (d.modules||[]).forEach(m=>{ const c=(m.category||'未分類').trim(); if(c&&!seen[c]){ seen[c]=1; d.moduleCats.push({id:uid('mc'), name:c, color: pickColor(d.moduleCats.length)}); } });
     if(!d.moduleCats.length) d.moduleCats=JSON.parse(JSON.stringify(DEFAULT_DATA.moduleCats));
   }
+  // 一次性：技術分類配色改採與「廠區（專案）」相同的柔和色盤（之後使用者自行調色不再覆蓋）
+  if(!d.meta) d.meta={};
+  if(!d.meta.catPaletteV2){ (d.moduleCats||[]).forEach((c,i)=>{ c.color=pickColor(i); }); d.meta.catPaletteV2=true; }
+  (d.pillars||[]).forEach(p=>{ if(p.name==='全球插線') p.name='全球擴線'; }); // 修正錯字：插線→擴線
   (d.groups||[]).forEach(gr=>{ if(!gr.color) gr.color='#5b8def'; });
   (d.members||[]).forEach(u=>{ if(u.teamId==null) u.teamId=''; });
   if(!d.domainColors) d.domainColors = JSON.parse(JSON.stringify(DEFAULT_DATA.domainColors));
@@ -342,10 +358,15 @@ function migrate(d){ // 相容舊資料：補上新欄位
   (d.members||[]).forEach(u=>{ if(u.capPct==null) u.capPct=100; if(!Array.isArray(u.skillRoles)) u.skillRoles=[]; });
   (d.projects||[]).forEach(p=>{ if(p.weight==null) p.weight=1; });
   (d.modules||[]).forEach(m=>{ if(m.weight==null) m.weight=1; });
+  // 生命週期狀態：active 進行中（預設）/ massprod 轉量產 / phaseout Phase-out（結案）。轉量產與 Phase-out 歸入「已完成」收合區
+  (d.projects||[]).forEach(p=>{ if(p.lifecycle==null) p.lifecycle='active'; });
+  (d.modules||[]).forEach(m=>{ if(m.lifecycle==null) m.lifecycle='active'; });
   // 專案技術平台(Pillar)：舊資料未指派時，依 Roadmap 連結自動推斷一個預設值
   (d.projects||[]).forEach(p=>{ if(p.pillarId==null){ const ri=(d.roadmapItems||[]).find(r=>(r.projectIds||[]).includes(p.id)); p.pillarId=ri?ri.pillar:''; } });
   if(!d.meta) d.meta={updated:DEFAULT_DATA.meta.updated}; d.meta.version=DEFAULT_DATA.meta.version;
   if(!d.meta.title) d.meta.title='部門指揮中心';
+  // One-Page 報告：記住各「Pillar｜類型」頁面上次勾選涵蓋的專案／技術（鍵例："Mobility|proj"）。空＝全部納入
+  if(!d.meta.reportSel||typeof d.meta.reportSel!=='object'||Array.isArray(d.meta.reportSel)) d.meta.reportSel={};
   if(d.meta.schemaVersion==null) d.meta.schemaVersion=DEFAULT_DATA.meta.schemaVersion;
   if(!d.department) d.department=JSON.parse(JSON.stringify(DEFAULT_DATA.department));
   // setup 旗標：判斷此份資料是否已完成部門設定（有部門名稱即視為已設定，相容舊資料）
@@ -414,7 +435,7 @@ const proj = id => DATA.projects.find(x=>x.id===id);
 const mod = id => DATA.modules.find(x=>x.id===id);
 const mem = id => DATA.members.find(x=>x.id===id);
 const pil = id => (DATA.pillars||[]).find(x=>x.id===id)||{name:id,domain:''};
-const catColor = name => { const c=(DATA.moduleCats||[]).find(x=>x.name===name); return c?c.color:(String(name).includes('FIDM')?'#c9852a':'#2f6fd0'); };
+const catColor = name => { const c=(DATA.moduleCats||[]).find(x=>x.name===name); return c?c.color:(String(name).includes('FIDM')?'#c9b85a':'#8aa6c8'); };
 // 專案/模塊的功能別成員角色（PM 為第一順位角色，PM=專案負責人）
 const FUNC_ROLES = ['光學','機構','電控','平台','演算法','FAE'];
 const ALL_ROLES = ['PM', ...FUNC_ROLES, '站點'];
@@ -489,7 +510,7 @@ function effPanelInner(){
         <span style="opacity:.92"><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${s.color};margin-right:6px;vertical-align:middle"></span>${esc(s.label)}</span>
         <span><b style="font-size:17px">${s.perHead}</b> <span style="font-size:10px;opacity:.8">萬/年·人</span></span></div>
       <div style="height:6px;background:rgba(255,255,255,.18);border-radius:4px;overflow:hidden;margin-top:3px"><span style="display:block;height:100%;width:${Math.round(s.perHead/max*100)}%;background:${s.color}"></span></div>
-      <div style="font-size:10px;opacity:.7;margin-top:2px">效益 ${s.benefit} ÷ ${s.heads} 人</div></div>`).join('')
+      <div style="font-size:10px;opacity:.7;margin-top:2px">效益 ${s.benefit} ÷ ${Math.round(s.heads*10)/10} 人</div></div>`).join('')
     : '<div style="font-size:12px;opacity:.7">此維度尚無投入人力的資料</div>';
   return tabs+rows;
 }
@@ -685,7 +706,7 @@ function renderOverview(){
       <div class="kpi" style="background:linear-gradient(135deg,#16324f,#1f4e96);min-width:300px;flex:1;align-items:stretch;text-align:left">
         <div class="label">人均產出效益</div>
         <div class="pct">${eff.perHead}<span style="font-size:15px;font-weight:600"> 萬元/年·人</span></div>
-        <div style="font-size:12px;opacity:.85;margin-top:2px">總效益 ${eff.benefit} 萬元/年 ÷ 投入 ${eff.heads} 人</div>
+        <div style="font-size:12px;opacity:.85;margin-top:2px">總效益 ${eff.benefit} 萬元/年 ÷ 投入 ${Math.round(eff.heads*10)/10} 人</div>
         <div style="border-top:1px solid rgba(255,255,255,.18);margin:12px 0 10px"></div>
         <div style="font-size:12px;font-weight:700;opacity:.9;margin-bottom:8px">分維度人均效益</div>
         <div id="effPanel">${effPanelInner()}</div></div>
@@ -784,6 +805,24 @@ function setAllProjectCollapse(v){ projectKeys().forEach(k=>PROJECT_COLLAPSE[k]=
 function toggleAllProjectCollapse(){ const ks=projectKeys(); const allCol=ks.length&&ks.every(k=>PROJECT_COLLAPSE[k]); setAllProjectCollapse(!allCol); }
 // 收合/展開全部切換鈕（共用）：allCol=目前是否全部收合
 const collapseToggleBtn=(fn,allCol)=>`<button class="btn sm ghost" onclick="${fn}()" title="收合／展開全部">${allCol?'⊞ 展開全部':'⊟ 收合全部'}</button>`;
+// ---- 生命週期狀態：進行中／轉量產／Phase-out ----
+const LIFECYCLE_OPTS=[['active','進行中'],['massprod','轉量產'],['phaseout','Phase-out（結案）']];
+function isDone(x){ return x && (x.lifecycle==='massprod'||x.lifecycle==='phaseout'); }
+function lifecycleLabel(lc){ return lc==='massprod'?'轉量產':lc==='phaseout'?'Phase-out':'進行中'; }
+function lifecycleBadge(lc){ if(lc==='massprod') return `<span class="badge ok" title="已轉量產">🏁 已完成（轉量產）</span>`;
+  if(lc==='phaseout') return `<span class="badge" style="background:#eef0f3;color:#7a8699;border-color:#dde1e8" title="已結案 Phase-out">⏹ Phase-out</span>`; return ''; }
+// 已完成（轉量產／Phase-out）收合狀態：專案以群組 id 為 key、技術以分類名為 key，預設收合
+let DONE_COLLAPSE={};
+function doneKey(scope,k){ return scope+'::'+k; }
+function toggleDoneCollapse(scope,k,fn){ const key=doneKey(scope,k); DONE_COLLAPSE[key]=(DONE_COLLAPSE[key]===undefined?false:!DONE_COLLAPSE[key]); window[fn](); }
+function isDoneCollapsed(scope,k){ const v=DONE_COLLAPSE[doneKey(scope,k)]; return v===undefined?true:v; }
+// 組內手動排序：在陣列中與「同群組／同分類且同完成狀態」的相鄰項目交換位置
+function moveItem(arr,id,dir,sameBucket,rerender){ const i=arr.findIndex(x=>x.id===id); if(i<0) return; let j=i+dir;
+  while(j>=0&&j<arr.length&&!sameBucket(arr[i],arr[j])) j+=dir;
+  if(j<0||j>=arr.length) return; const t=arr[i]; arr[i]=arr[j]; arr[j]=t; save(); rerender(); }
+function moveProj(id,dir){ moveItem(DATA.projects,id,dir,(a,b)=>a.group===b.group&&isDone(a)===isDone(b),renderProjects); }
+function moveMod(id,dir){ moveItem(DATA.modules,id,dir,(a,b)=>(a.category||'未分類')===(b.category||'未分類')&&isDone(a)===isDone(b),renderModules); }
+function reorderBtns(fn,id){ return `<button class="btn sm ghost" style="padding:0 6px" title="上移" onclick="${fn}('${id}',-1)">▲</button> <button class="btn sm ghost" style="padding:0 6px" title="下移" onclick="${fn}('${id}',1)">▼</button> `; }
 // ---- 一覽表欄位排序（各群組內排序，維持分組）----
 let PROJECT_SORT={key:null,dir:1}, MODULE_SORT={key:null,dir:1}, MEMBER_SORT={key:null,dir:1};
 const SORT_REF={project:()=>PROJECT_SORT, module:()=>MODULE_SORT, member:()=>MEMBER_SORT};
@@ -824,7 +863,12 @@ function renderProjects(){
         <button class="btn sm ghost" style="padding:0 6px" onclick="delGroup('${gr.id}')">🗑</button>`}</td></tr>`);
       if(col) return;
       if(!items.length){ rows.push('<tr><td colspan="8" style="color:var(--muted)">尚無專案</td></tr>'); return; }
-      applySort(items,PROJECT_SORT,PROJ_ACC).forEach(p=>{ rows.push(projectRow(p)); if(PROJ_STATION_OPEN[p.id]) rows.push(stationRows(p)); });
+      const sorted=applySort(items,PROJECT_SORT,PROJ_ACC);
+      const active=sorted.filter(p=>!isDone(p)), done=sorted.filter(isDone);
+      active.forEach((p,idx)=>{ rows.push(projectRow(p,idx,active.length)); if(PROJ_STATION_OPEN[p.id]) rows.push(stationRows(p)); });
+      if(done.length){ const dc=isDoneCollapsed('proj',key);
+        rows.push(`<tr class="donehead"><td colspan="8" style="background:#fafbfd;padding:5px 12px"><span onclick="toggleDoneCollapse('proj','${key}','renderProjects')" style="cursor:pointer;user-select:none;color:#7a8699;font-size:12px;font-weight:700">${dc?'▸':'▾'} ✅ 已完成（${done.length}）</span></td></tr>`);
+        if(!dc) done.forEach(p=>rows.push(projectRowCompact(p))); }
     };
     byGroup.forEach(b=>pushGroup(b.gr,b.items,false,b.gr.id));
     if(orphans.length) pushGroup({id:'',name:'未分類',color:'#b8c2d0'},orphans,true,'__orphan__');
@@ -837,14 +881,29 @@ function renderProjects(){
 
   document.getElementById('view').innerHTML=head+
     byGroup.map(b=>`<div style="margin-bottom:20px">${groupHeader(b.gr,b.gr.id)}
-        ${PROJECT_COLLAPSE[b.gr.id]?'':`<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(300px,1fr))">
-          ${b.items.map(p=>projectCard(p)).join('')||'<div class="empty">尚無專案</div>'}
-        </div>`}</div>`).join('')+
+        ${PROJECT_COLLAPSE[b.gr.id]?'':projCardBody(b.items,b.gr.id)}</div>`).join('')+
     (orphans.length?`<div style="margin-bottom:20px">
       <div style="margin-bottom:8px"><span onclick="toggleGroupCollapse('__orphan__')" style="cursor:pointer;user-select:none;font-weight:700;color:var(--muted)"><span style="margin-right:6px">${PROJECT_COLLAPSE['__orphan__']?'▸':'▾'}</span>未分類（${orphans.length}）</span><span style="font-size:11px;font-weight:400;color:var(--muted)">　編輯專案可重新指派廠區</span></div>
-      ${PROJECT_COLLAPSE['__orphan__']?'':`<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(300px,1fr))">
-        ${orphans.map(p=>projectCard(p)).join('')}
-      </div>`}</div>`:'');
+      ${PROJECT_COLLAPSE['__orphan__']?'':projCardBody(orphans,'__orphan__')}</div>`:'');
+}
+// 卡片視圖：群組內 active 卡片網格 + 已完成收合區（精簡卡片）
+function projCardBody(items,key){
+  if(!items.length) return '<div class="empty">尚無專案</div>';
+  const active=items.filter(p=>!isDone(p)), done=items.filter(isDone);
+  let html=`<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(300px,1fr))">${active.map(p=>projectCard(p)).join('')||'<div class="empty">尚無進行中專案</div>'}</div>`;
+  if(done.length){ const dc=isDoneCollapsed('proj',key);
+    html+=`<div style="margin-top:12px"><span onclick="toggleDoneCollapse('proj','${key}','renderProjects')" style="cursor:pointer;user-select:none;color:#7a8699;font-size:12px;font-weight:700">${dc?'▸':'▾'} ✅ 已完成（${done.length}）</span>`;
+    if(!dc) html+=`<div style="margin-top:8px;display:flex;flex-direction:column;gap:6px">${done.map(p=>projectCardCompact(p)).join('')}</div>`;
+    html+=`</div>`; }
+  return html;
+}
+function projectCardCompact(p){
+  return `<div class="card" style="border-left:4px solid ${g(p.group).color};padding:8px 12px;opacity:.78;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+    <span style="font-weight:700;font-size:13px;flex:1;min-width:120px">${esc(p.name)}</span>
+    ${lifecycleBadge(p.lifecycle)}
+    <span style="font-size:12px;white-space:nowrap"><b>${projProgress(p)}%</b></span>
+    ${PROJECT_EDIT?`<span style="white-space:nowrap">${reorderBtns('moveProj',p.id)}<button class="btn sm ghost" onclick="editProject('${p.id}')">編輯</button></span>`:''}
+  </div>`;
 }
 function projectRow(p){
   const h=projHeadcount(p);
@@ -857,7 +916,18 @@ function projectRow(p){
     <td style="font-size:12px;white-space:nowrap">👥 ${h||0} 人　💰 <b style="color:var(--blue)">${projBenefit(p)}</b> 萬/年</td>
     <td style="font-size:12px">PM：<b>${mems}</b></td>
     <td style="max-width:180px">${projModuleIds(p).map(id=>mod(id)?`<span class="tag" style="font-size:10px;padding:1px 6px">${esc(mod(id).name)}</span>`:'').filter(Boolean).join('')||'<span style="color:var(--muted);font-size:11px">—</span>'}</td>
-    <td style="white-space:nowrap">${PROJECT_EDIT?`<button class="btn sm ghost" onclick="editProject('${p.id}')">編輯</button> <button class="btn sm danger" onclick="delEntity('projects','${p.id}')">刪除</button>`:''}</td>
+    <td style="white-space:nowrap">${PROJECT_EDIT?`${reorderBtns('moveProj',p.id)}<button class="btn sm ghost" onclick="editProject('${p.id}')">編輯</button> <button class="btn sm danger" onclick="delEntity('projects','${p.id}')">刪除</button>`:''}</td>
+  </tr>`;
+}
+// 已完成（轉量產／Phase-out）精簡列：只留 名稱＋生命週期＋進度
+function projectRowCompact(p){
+  return `<tr id="proj-${p.id}" style="opacity:.66">
+    <td style="padding-top:4px;padding-bottom:4px"><span class="nm" style="font-size:12px">${esc(p.name)}</span></td>
+    <td style="font-size:11px;color:var(--muted);white-space:nowrap">${esc(p.customer||'')}</td>
+    <td style="font-size:12px"><b>${projProgress(p)}%</b></td>
+    <td>${lifecycleBadge(p.lifecycle)}</td>
+    <td colspan="3" style="font-size:11px;color:var(--muted)">${esc(projPhase(p)||'')}</td>
+    <td style="white-space:nowrap">${PROJECT_EDIT?`${reorderBtns('moveProj',p.id)}<button class="btn sm ghost" onclick="editProject('${p.id}')">編輯</button>`:''}</td>
   </tr>`;
 }
 // AOI 站點明細列（表格展開用）— 欄位與主專案列一致；無資訊欄留白
@@ -922,7 +992,7 @@ function projectCard(p){
       <span style="color:var(--muted)">${esc(p.gains||'')}</span></div>
     <div style="margin-top:6px">${memberChips(p, p.memberIds)}</div>
     ${stationCardList(p)}
-    ${PROJECT_EDIT?`<div class="cardrow"><button class="btn sm ghost" onclick="editProject('${p.id}')">編輯</button>
+    ${PROJECT_EDIT?`<div class="cardrow">${reorderBtns('moveProj',p.id)}<button class="btn sm ghost" onclick="editProject('${p.id}')">編輯</button>
       <button class="btn sm danger" onclick="delEntity('projects','${p.id}')">刪除</button></div>`:''}
   </div>`;
 }
@@ -967,8 +1037,13 @@ function renderModules(){
       const col=catColor(c); const cc=MODULE_COLLAPSE[c];
       rows.push(`<tr class="teamrow"><td colspan="6"><span onclick="toggleCatCollapse('${esc(c)}')" style="cursor:pointer;user-select:none"><span style="margin-right:6px">${cc?'▸':'▾'}</span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${col};margin-right:6px"></span>${esc(c)}（${items.length}）</span>${catBtns(c)}</td></tr>`);
       if(cc) return;
-      if(!items.length) rows.push('<tr><td colspan="6" style="color:var(--muted)">尚無模塊</td></tr>');
-      applySort(items,MODULE_SORT,MOD_ACC).forEach(m=>rows.push(moduleRow(m)));
+      if(!items.length){ rows.push('<tr><td colspan="6" style="color:var(--muted)">尚無模塊</td></tr>'); return; }
+      const sorted=applySort(items,MODULE_SORT,MOD_ACC);
+      const active=sorted.filter(m=>!isDone(m)), done=sorted.filter(isDone);
+      active.forEach(m=>rows.push(moduleRow(m)));
+      if(done.length){ const dc=isDoneCollapsed('mod',c);
+        rows.push(`<tr class="donehead"><td colspan="6" style="background:#fafbfd;padding:5px 12px"><span onclick="toggleDoneCollapse('mod','${esc(c)}','renderModules')" style="cursor:pointer;user-select:none;color:#7a8699;font-size:12px;font-weight:700">${dc?'▸':'▾'} ✅ 已完成（${done.length}）</span></td></tr>`);
+        if(!dc) done.forEach(m=>rows.push(moduleRowCompact(m))); }
     });
     document.getElementById('view').innerHTML=head+`
       <table class="mtable">
@@ -988,10 +1063,26 @@ function renderModules(){
           <span style="font-size:12px;color:${col};width:12px;display:inline-block">${cc?'▸':'▾'}</span>
           <span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:${col}"></span>
           <span style="font-weight:700;color:${col}">${esc(c)}（${items.length}）</span></span>${catBtns(c)}</div>
-      ${cc?'':`<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(300px,1fr))">
-        ${items.map(m=>moduleCard(m)).join('')||'<div class="empty">尚無模塊</div>'}
-      </div>`}</div>`;
+      ${cc?'':modCardBody(items,c)}</div>`;
     }).join('');
+}
+function modCardBody(items,cat){
+  if(!items.length) return '<div class="empty">尚無模塊</div>';
+  const active=items.filter(m=>!isDone(m)), done=items.filter(isDone);
+  let html=`<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(300px,1fr))">${active.map(m=>moduleCard(m)).join('')||'<div class="empty">尚無進行中模塊</div>'}</div>`;
+  if(done.length){ const dc=isDoneCollapsed('mod',cat);
+    html+=`<div style="margin-top:12px"><span onclick="toggleDoneCollapse('mod','${esc(cat)}','renderModules')" style="cursor:pointer;user-select:none;color:#7a8699;font-size:12px;font-weight:700">${dc?'▸':'▾'} ✅ 已完成（${done.length}）</span>`;
+    if(!dc) html+=`<div style="margin-top:8px;display:flex;flex-direction:column;gap:6px">${done.map(m=>moduleCardCompact(m)).join('')}</div>`;
+    html+=`</div>`; }
+  return html;
+}
+function moduleCardCompact(m){
+  return `<div class="card" style="border-left:4px solid ${catColor(m.category)};padding:8px 12px;opacity:.78;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+    <span style="font-weight:700;font-size:13px;flex:1;min-width:120px">${esc(m.name)}</span>
+    ${lifecycleBadge(m.lifecycle)}
+    <span style="font-size:12px;white-space:nowrap"><b>${m.progress||0}%</b></span>
+    ${MODULE_EDIT?`<span style="white-space:nowrap">${reorderBtns('moveMod',m.id)}<button class="btn sm ghost" onclick="editModule('${m.id}')">編輯</button></span>`:''}
+  </div>`;
 }
 function editModuleCat(id){
   const c=id?(DATA.moduleCats||[]).find(x=>x.id===id):null;
@@ -1036,7 +1127,16 @@ function moduleRow(m){
     <td>${modStatusBadge(m)}</td>
     <td style="max-width:220px">${caps}</td>
     <td style="font-size:12px;max-width:220px">PM：${owners}${roles?'<br><span style="font-size:11px;color:var(--muted)">'+roles+'</span>':''}</td>
-    <td style="white-space:nowrap">${MODULE_EDIT?`<button class="btn sm ghost" onclick="editModule('${m.id}')">編輯</button> <button class="btn sm danger" onclick="delEntity('modules','${m.id}')">刪除</button>`:''}</td>
+    <td style="white-space:nowrap">${MODULE_EDIT?`${reorderBtns('moveMod',m.id)}<button class="btn sm ghost" onclick="editModule('${m.id}')">編輯</button> <button class="btn sm danger" onclick="delEntity('modules','${m.id}')">刪除</button>`:''}</td>
+  </tr>`;
+}
+function moduleRowCompact(m){
+  return `<tr id="mod-${m.id}" style="opacity:.66">
+    <td style="padding-top:4px;padding-bottom:4px"><span class="nm" style="font-size:12px">${esc(m.name)}</span></td>
+    <td style="font-size:12px"><b>${m.progress||0}%</b></td>
+    <td>${lifecycleBadge(m.lifecycle)}</td>
+    <td colspan="2" style="font-size:11px;color:var(--muted)">${esc(m.phase||'')}</td>
+    <td style="white-space:nowrap">${MODULE_EDIT?`${reorderBtns('moveMod',m.id)}<button class="btn sm ghost" onclick="editModule('${m.id}')">編輯</button>`:''}</td>
   </tr>`;
 }
 function moduleCard(m){
@@ -1048,7 +1148,7 @@ function moduleCard(m){
       <div style="text-align:right;font-size:12px;color:var(--muted)">預計<br>${esc(m.eta||'-')}</div></div>
     <div style="margin-top:8px">能力：${(m.caps||[]).map(c=>`<span class="tag">${esc(c)}</span>`).join('')}</div>
     <div style="margin-top:6px">${memberChips(m, m.ownerIds)}</div>
-    ${MODULE_EDIT?`<div class="cardrow"><button class="btn sm ghost" onclick="editModule('${m.id}')">編輯</button>
+    ${MODULE_EDIT?`<div class="cardrow">${reorderBtns('moveMod',m.id)}<button class="btn sm ghost" onclick="editModule('${m.id}')">編輯</button>
       <button class="btn sm danger" onclick="delEntity('modules','${m.id}')">刪除</button></div>`:''}
   </div>`;
 }
@@ -1072,7 +1172,7 @@ function renderMembers(){
   const over=DATA.members.filter(u=>memberLoad(u.id).total>(u.capPct||100)).length;
   const ed=MEMBER_EDIT;
   const head=`
-    <div class="note">Loading = 負責「專案數 + 模塊開發數」自動計算（含功能別成員），超過個人上限即顯示超載。</div>
+    <div class="note">Loading 依負責專案與模塊自動計算，超過上限即顯示超載。</div>
     <div class="section-title">團隊成員 <span class="count">共 ${DATA.members.length} 人 / ${teams.length} 團隊${over?`　<span style="color:var(--warn)">⚠ ${over} 人超載</span>`:''}</span>
       <span class="spacer" style="flex:1"></span>
       <button class="btn sm ${MEMBER_VIEW==='table'?'':'ghost'}" onclick="setMemberView('table')">📋 一覽表</button>
@@ -1238,7 +1338,7 @@ function applyDeptTheme(){
   const rgb=hexRgb(c), drgb=hexRgb(dk), h=document.querySelector('header');
   if(h) h.style.background=`linear-gradient(120deg,rgba(${drgb.r},${drgb.g},${drgb.b},.82),rgba(${rgb.r},${rgb.g},${rgb.b},.74))`;
 }
-function renderTitle(){ const nm=deptName(); const code=(DATA.department&&DATA.department.code)||''; const el=document.getElementById('appTitle'); if(el) el.innerHTML=esc(nm)+(code?` <span style="font-weight:600;opacity:.8;font-size:.82em">${esc(code)}</span>`:''); const vb=document.getElementById('appVer'); if(vb) vb.textContent=(DATA.meta&&DATA.meta.version)||'v3.0'; document.title=nm+(code?` (${code})`:'')+' | 指揮中心'; applyDeptTheme(); }
+function renderTitle(){ const nm=deptName(); const code=(DATA.department&&DATA.department.code)||''; const el=document.getElementById('appTitle'); if(el) el.innerHTML=esc(nm)+(code?` <span style="font-weight:600;opacity:.8;font-size:.82em">${esc(code)}</span>`:''); const vb=document.getElementById('appVer'); if(vb) vb.textContent=(DATA.meta&&DATA.meta.version)||'v4.0'; document.title=nm+(code?` (${code})`:'')+' | 指揮中心'; applyDeptTheme(); }
 function showDeptSetup(first){
   const d=DATA.department||{};
   openModal(`<h3>${first?'建立你的指揮中心':'部門設定'}</h3>
@@ -1267,7 +1367,7 @@ function saveDeptSetup(){
   save(); renderTitle(); closeModal();
 }
 function skipDeptSetup(){ DATA.meta.setup=true; save(); closeModal(); }
-function showAbout(){ const ver=(DATA.meta&&DATA.meta.version)||'v3.0'; const verDate='2026-06-14'; const upd=(DATA.meta&&DATA.meta.updated)||''; const d=DATA.department||{}; const hasMgr=!!(d.manager||d.email); openModal(`<h2 style="margin:0 0 14px">關於本平台</h2>
+function showAbout(){ const ver=(DATA.meta&&DATA.meta.version)||'v4.0'; const verDate='2026-06-14'; const upd=(DATA.meta&&DATA.meta.updated)||''; const d=DATA.department||{}; const hasMgr=!!(d.manager||d.email); openModal(`<h2 style="margin:0 0 14px">關於本平台</h2>
   <div style="line-height:1.9;font-size:14px">
     <div style="font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.5px">部門資訊</div>
     <div><b style="font-size:15px">${esc(deptName())}</b></div>
@@ -1277,7 +1377,7 @@ function showAbout(){ const ver=(DATA.meta&&DATA.meta.version)||'v3.0'; const ve
 
     <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--glass-line)">
       <div style="font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.5px">平台資訊</div>
-      <div>平台版本：<b>${esc(ver)}</b> <span style="color:var(--muted)">（多部門版・iOS 液態玻璃介面）</span></div>
+      <div>平台版本：<b>${esc(ver)}</b> <span style="color:var(--muted)">（自動報告版・iOS 液態玻璃介面）</span></div>
       <div>版本發佈日：<b>${esc(verDate)}</b></div>
       <div>平台負責人：<b>Johnny Yang</b> · <a href="mailto:johnny.yang@auo.com">johnny.yang@auo.com</a></div>
     </div>
@@ -1346,18 +1446,19 @@ function editProject(id){
   openModal(`<h3>${id?'編輯':'新增'}專案</h3>
     <div class="field"><label>專案名稱</label><input id="f_name" value="${esc(p.name)}"></div>
     <div class="row"><div class="field" style="flex:1"><label>線體群組／廠區</label><select id="f_group" onchange="groupSelectChange(this)">${DATA.groups.map(gr=>`<option value="${gr.id}" ${p.group===gr.id?'selected':''}>${esc(gr.name)}</option>`).join('')}<option value="__new__">＋ 新增廠區…</option></select></div>
-      <div class="field" style="flex:1"><label>技術平台 Pillar（Mobility／Display）</label><select id="f_pillar"><option value="">（未指派）</option>${[...new Set((DATA.pillars||[]).map(x=>x.domain))].map(dm=>`<optgroup label="${esc(dm)}">${(DATA.pillars||[]).filter(x=>x.domain===dm).map(x=>`<option value="${x.id}" ${p.pillarId===x.id?'selected':''}>${esc(x.name)}</option>`).join('')}</optgroup>`).join('')}</select><div class="hint">決定此專案在報告中歸於 Mobility 或 Display</div></div>
+      <div class="field" style="flex:1"><label>技術平台 Pillar</label><select id="f_pillar"><option value="">（未指派）</option>${ROADMAP_DOMAINS.filter(dm=>(DATA.pillars||[]).some(x=>x.domain===dm)).map(dm=>`<optgroup label="${esc(dm)}">${(DATA.pillars||[]).filter(x=>x.domain===dm).map(x=>`<option value="${x.id}" ${p.pillarId===x.id?'selected':''}>${esc(x.name)}</option>`).join('')}</optgroup>`).join('')}</select><div class="hint">決定此專案歸於 Mobility／Display／Vertical 哪一類（於 Roadmap 頁可新增各類的技術平台）</div></div>
       <div class="field" style="flex:1"><label>客戶</label><input id="f_customer" value="${esc(p.customer)}"></div></div>
     <div class="field"><label>目前階段</label><input id="f_phase" value="${esc(p.phase)}"><div class="hint">填寫整個主專案的目前階段／狀態；各子專案（站點）階段請於下方各站個別填寫</div></div>
     <div class="row"><div class="field" style="flex:1"><label>進度 %</label><input id="f_progress" type="number" min="0" max="100" value="${p.progress||0}" oninput="refreshAutoStatus()"><div class="hint" id="f_progressHint" style="display:none">有 AOI 站點時，線進度＝各站平均自動計算</div></div>
       <div class="field" style="flex:1"><label>預計完成日</label><input id="f_eta" type="date" value="${toDateInput(p.eta)}" onchange="refreshAutoStatus()"></div>
-      <div class="field" style="flex:1"><label>狀態（自動）</label><div id="f_statusAuto" style="padding:7px 0">—</div><div class="hint">依進度與預計日自動判定</div></div></div>
+      <div class="field" style="flex:1"><label>狀態（自動）</label><div id="f_statusAuto" style="padding:7px 0">—</div><div class="hint">依進度與預計日自動判定</div></div>
+      <div class="field" style="flex:1"><label>生命週期</label><select id="f_lifecycle">${LIFECYCLE_OPTS.map(([v,l])=>`<option value="${v}" ${(p.lifecycle||'active')===v?'selected':''}>${l}</option>`).join('')}</select><div class="hint">轉量產／Phase-out 會收到列表最下方「已完成」區</div></div></div>
     <div class="row" style="background:#f4f7fc;border-radius:8px;padding:10px 10px 0;margin-bottom:12px">
       <div class="field" style="flex:1"><label>重要性權重</label><input id="f_weight" type="number" min="0" step="0.1" value="${p.weight==null?1:p.weight}"><div class="hint">數值越大越重要，放大成員投入工時（預設 1）</div></div>
       <div class="field" style="flex:1.4"><label style="white-space:nowrap">投入人數（等效人力）</label><div style="font-size:20px;font-weight:800;color:var(--blue);padding:6px 0;white-space:nowrap">${Math.round(projFTE(p)*10)/10} 人</div><div class="hint">自動依成員角色工時%加總換算，無需手動填寫</div></div>
       <div class="field" style="flex:1"><label>產出效益（萬元/年）</label><input id="f_benefit" type="number" min="0" value="${+p.benefit||0}"><div class="hint">量化年效益金額</div><div class="hint" id="f_benefitHint" style="display:none">有 AOI 站點時，效益＝各站效益加總自動計算</div></div>
       <div class="field" style="flex:2"><label>效益內容</label><input id="f_gains" value="${esc(p.gains||'')}"><div class="hint">如：省2人, Cost↓15%, TT↓43%</div></div></div>
-    <div class="field"><label>需求能力（逗號分隔，供配對用）</label><input id="f_needs" value="${esc((p.needs||[]).join(', '))}"></div>
+    <div class="field"><label>需求能力</label><input id="f_needs" value="${esc((p.needs||[]).join(', '))}"><div class="hint">逗號分隔</div></div>
     <div class="field"><label>專案 Leader（PM）</label><div class="hint" style="margin:-4px 0 6px">只設定專案負責人；技術模塊與各功能別工程師在下方「AOI 站點」依站指派。</div>${checkboxGrid('f_mems',DATA.members.map(m=>({id:m.id,label:m.name})),p.memberIds||[])}</div>
     <div class="field"><label>AOI 站點（站點成員與功能別在此設定）</label>
       <div class="hint" style="margin-bottom:6px">每一站可有不同進度／模塊／站長／投入功能別與成員；填了站點後，本線進度＝各站平均自動計算。</div>
@@ -1417,7 +1518,7 @@ function saveProject(pid,exists){
   const stations=EDIT_STATIONS.filter(s=>s.name||s.phase||s.moduleIds.length||s.ownerIds.length||(s.roles||[]).length||+s.benefit).map(s=>({id:s.id||uid('st'),name:s.name,phase:s.phase||'',progress:+s.progress||0,eta:s.eta||'',benefit:+s.benefit||0,moduleIds:[...s.moduleIds],ownerIds:[...s.ownerIds],roles:[...(s.roles||[])],roleMembers:JSON.parse(JSON.stringify(s.roleMembers||{}))}));
   const o={ id:pid, name:val('f_name'), group:val('f_group'), pillarId:val('f_pillar'), customer:val('f_customer'), phase:val('f_phase'),
     progress:+val('f_progress')||0, eta:fromDateInput(val('f_eta')),
-    headcount:0, benefit:+val('f_benefit')||0, gains:val('f_gains'), weight:+val('f_weight')||1,
+    headcount:0, benefit:+val('f_benefit')||0, gains:val('f_gains'), weight:+val('f_weight')||1, lifecycle:val('f_lifecycle')||'active',
     needs:val('f_needs').split(/[,，]/).map(s=>s.trim()).filter(Boolean), moduleIds:(orig?orig.moduleIds||[]:[]), memberIds:getChecked('f_mems'), roleMembers:(orig?orig.roleMembers||{}:{}), stations };
   if(stations.length){ o.progress=projProgress(o); o.benefit=projBenefit(o); }
   o.status=autoStatus({progress:projProgress(o),eta:o.eta}).label; // 自動判定後存入，供匯出/相容
@@ -1509,12 +1610,13 @@ function editModule(id){
   openModal(`<h3>${id?'編輯':'新增'}技術模塊</h3>
     <div class="field"><label>模塊名稱</label><input id="f_name" value="${esc(m.name)}"></div>
     <div class="row"><div class="field" style="flex:1"><label>分類</label><select id="f_cat" onchange="catSelectChange(this)">${cats.map(c=>`<option value="${esc(c)}" ${m.category===c?'selected':''}>${esc(c)}</option>`).join('')}<option value="__new__">＋ 新增分類…</option></select></div>
-      <div class="field" style="flex:1"><label>新技術標記</label><select id="f_status"><option value="正常" ${m.status!=='New'?'selected':''}>一般技術</option><option value="New" ${m.status==='New'?'selected':''}>New 新技術</option></select><div class="hint">排程狀態（進行中／衝刺中／延遲）依進度與預計完成日自動判定</div></div></div>
+      <div class="field" style="flex:1"><label>新技術標記</label><select id="f_status"><option value="正常" ${m.status!=='New'?'selected':''}>一般技術</option><option value="New" ${m.status==='New'?'selected':''}>New 新技術</option></select><div class="hint">排程狀態依進度自動判定</div></div></div>
     <div class="field"><label>目前階段</label><input id="f_phase" value="${esc(m.phase)}"></div>
     <div class="row"><div class="field" style="flex:1"><label>進度 %</label><input id="f_progress" type="number" min="0" max="100" value="${m.progress}"></div>
       <div class="field" style="flex:1"><label>預計完成日</label><input id="f_eta" type="date" value="${toDateInput(m.eta)}"></div>
-      <div class="field" style="flex:1"><label>重要性權重</label><input id="f_weight" type="number" min="0" step="0.1" value="${m.weight==null?1:m.weight}"><div class="hint">放大成員投入工時（預設 1）</div></div></div>
-    <div class="field"><label>能力標籤（逗號分隔，供配對用）</label><input id="f_caps" value="${esc((m.caps||[]).join(', '))}"></div>
+      <div class="field" style="flex:1"><label>重要性權重</label><input id="f_weight" type="number" min="0" step="0.1" value="${m.weight==null?1:m.weight}"><div class="hint">放大成員投入工時（預設 1）</div></div>
+      <div class="field" style="flex:1"><label>生命週期</label><select id="f_lifecycle">${LIFECYCLE_OPTS.map(([v,l])=>`<option value="${v}" ${(m.lifecycle||'active')===v?'selected':''}>${l}</option>`).join('')}</select><div class="hint">轉量產／Phase-out 收到「已完成」區</div></div></div>
+    <div class="field"><label>能力標籤</label><input id="f_caps" value="${esc((m.caps||[]).join(', '))}"><div class="hint">逗號分隔</div></div>
     <div class="field"><label>PM（負責人）</label>${checkboxGrid('f_owners',DATA.members.map(u=>({id:u.id,label:u.name})),m.ownerIds||[])}</div>
     ${roleMemberFields('f_mrole', m, '模塊成員（依功能別）')}
     <div class="modal-foot"><button class="btn ghost" onclick="closeModal()">取消</button><button class="btn" onclick="saveModule('${m.id}',${!!id})">儲存</button></div>`);
@@ -1528,7 +1630,7 @@ function catSelectChange(sel){
     else sel.selectedIndex=0;
   }
 }
-function pickColor(i){ const pal=['#5b8def','#c9852a','#3aab8d','#b3679d','#d9534f','#7e57c2','#e6a23c','#2f6fd0']; return pal[i%pal.length]; }
+function pickColor(i){ const pal=['#8aa6c8','#c9b85a','#b39ddb','#8fbf9f','#d4a59a','#9aa9d4','#cdbf8a','#b9d49a']; return pal[i%pal.length]; }
 // 在「新增專案」視窗內即時新增廠區（建立後選中；可到專案頁標頭 ✎ 改色）
 function groupSelectChange(sel){
   if(sel.value==='__new__'){
@@ -1559,7 +1661,7 @@ function teamSelectChange(sel){
 }
 function saveModule(mid,exists){
   const o={ id:mid, name:val('f_name'), category:val('f_cat')||'未分類', progress:+val('f_progress')||0, phase:val('f_phase'),
-    eta:fromDateInput(val('f_eta')), status:val('f_status'), weight:+val('f_weight')||1, caps:val('f_caps').split(/[,，]/).map(s=>s.trim()).filter(Boolean), ownerIds:getChecked('f_owners'), roleMembers:collectRoleMembers('f_mrole') };
+    eta:fromDateInput(val('f_eta')), status:val('f_status'), weight:+val('f_weight')||1, lifecycle:val('f_lifecycle')||'active', caps:val('f_caps').split(/[,，]/).map(s=>s.trim()).filter(Boolean), ownerIds:getChecked('f_owners'), roleMembers:collectRoleMembers('f_mrole') };
   if(!o.name){ alert('請輸入模塊名稱'); return; }
   if(o.category && o.category!=='未分類'){ if(!DATA.moduleCats) DATA.moduleCats=[];
     if(!DATA.moduleCats.some(c=>c.name===o.category)) DATA.moduleCats.push({id:uid('mc'),name:o.category,color:pickColor(DATA.moduleCats.length)}); }
@@ -1573,10 +1675,10 @@ function editMember(id){
     <div class="row"><div class="field" style="flex:2"><label>姓名</label><input id="f_name" value="${esc(u.name)}"></div>
       <div class="field" style="flex:1"><label>職稱</label><select id="f_title" onchange="titleSelectChange(this)"><option value="">未設定</option>${titleOptions(u.title)}<option value="__new__">＋ 新增職稱…</option></select></div></div>
     <div class="row"><div class="field" style="flex:1"><label>所屬團隊</label><select id="f_team" onchange="teamSelectChange(this)"><option value="">未分組</option>${(DATA.teams||[]).map(t=>`<option value="${t.id}" ${u.teamId===t.id?'selected':''}>${esc(t.name)}</option>`).join('')}<option value="__new__">＋ 新增團隊…</option></select></div>
-      <div class="field" style="flex:1"><label>工時上限（%）</label><input id="f_cap" type="number" min="1" value="${u.capPct||100}"><div class="hint">加權投入工時超過此值即超載（預設 100）。</div></div></div>
-    <div class="field"><label>技能（可複選）</label>${checkboxGrid('f_sroles',FUNC_ROLES.map(r=>({id:r,label:r})),u.skillRoles||[])}<div class="hint">此人專精的功能領域（光學/機構/電控/平台/演算法/FAE），供指派角色與智能配對參考。</div></div>
+      <div class="field" style="flex:1"><label>工時上限（%）</label><input id="f_cap" type="number" min="1" value="${u.capPct||100}"><div class="hint">超過即超載（預設 100）</div></div></div>
+    <div class="field"><label>技能（可複選）</label>${checkboxGrid('f_sroles',FUNC_ROLES.map(r=>({id:r,label:r})),u.skillRoles||[])}<div class="hint">供指派角色與智能配對參考</div></div>
     <div class="field"><label>技術模塊（可複選）</label>${checkboxGrid('f_skills',DATA.modules.map(m=>({id:m.id,label:m.name})),u.skillModuleIds||[])}</div>
-    <div class="note" style="margin:0">負責的專案 / 模塊請到「專案進度」「技術模塊」分頁指派，Loading 會依角色工時×重要性權重自動計算。</div>
+    <div class="note" style="margin:0">專案／模塊指派請至各分頁，Loading 自動計算。</div>
     <div class="modal-foot"><button class="btn ghost" onclick="closeModal()">取消</button><button class="btn" onclick="saveMember('${u.id}',${!!id})">儲存</button></div>`);
 }
 function saveMember(uid_,exists){
@@ -1588,7 +1690,7 @@ function saveMember(uid_,exists){
 function editRoleWorkload(){
   const w=DATA.roleWorkload||{};
   openModal(`<h3>角色基準工時設定</h3>
-    <div class="hint">設定每個角色在「一個重要性權重 = 1 的專案／模塊」中，預估佔用的個人工時%。<br>個人 Loading = Σ（角色基準工時% × 該專案重要性權重），超過工時上限即超載。</div>
+    <div class="hint">設定各角色在權重 1 的專案／模塊中預估佔用的工時%。Loading 為各角色工時×權重的加總。</div>
     <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:8px">
       ${ALL_ROLES.map((r,i)=>`<div class="field" style="margin:0"><label>${r}（%）</label><input id="f_rw${i}" type="number" min="0" value="${+w[r]||0}"></div>`).join('')}
     </div>
@@ -1669,6 +1771,343 @@ function exportExcel(){
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(modRows), '表3_模塊');
   XLSX.writeFile(wb, '部門資料-'+DATA.meta.updated+'.xlsx');
 }
+/* ============================================================
+   One-Page 自動報告（v4）
+   依 Pillar（Mobility／Display／Vertical）＋ 類型（專案擴線／新技術）產出單頁。
+   專案頁：左側 KPI 依「廠區」分；技術頁：依「技術分類」分。含人均效益。
+   ============================================================ */
+let RP_DOMAIN='Mobility', RP_TYPE='proj';
+// 取某領域(Pillar)的專案
+function rpDomainProjects(domain){ return (DATA.projects||[]).filter(p=>projDomain(p)===domain); }
+// 取某領域的技術模塊：經 Roadmap（該領域 Pillar 連結）或該領域專案使用到的模塊
+function rpDomainModules(domain){
+  const plIds=(DATA.pillars||[]).filter(x=>x.domain===domain).map(x=>x.id);
+  const ids=new Set();
+  (DATA.roadmapItems||[]).filter(r=>plIds.includes(r.pillar)).forEach(r=>(r.moduleIds||[]).forEach(id=>ids.add(id)));
+  rpDomainProjects(domain).forEach(p=>projModuleIds(p).forEach(id=>ids.add(id)));
+  return (DATA.modules||[]).filter(m=>ids.has(m.id));
+}
+function rpSelKey(domain,type){ return domain+'|'+type; }
+// 開啟報告產生器
+function openReportPicker(){ if(!(DATA.pillars||[]).length){ alert('尚未建立任何技術平台 Pillar，請先於 Roadmap 頁建立。'); return; } openModal(reportPickerHTML()); rpRefreshItems(); }
+function reportPickerHTML(){
+  const doms=['Mobility','Display','Vertical'];
+  const domBtns=doms.map(d=>{ const n=rpDomainProjects(d).length; const c=domainColor(d);
+    return `<button type="button" class="rp-tab${RP_DOMAIN===d?' on':''}" style="--tc:${c}" onclick="rpSetDomain('${d}')">${d}<span class="rp-tab-n">${n} 專案</span></button>`; }).join('');
+  const typeBtns=[['proj','專案進度（擴線）'],['tech','新技術進度']].map(([k,l])=>
+    `<button type="button" class="rp-tab${RP_TYPE===k?' on':''}" style="--tc:#1f4e96" onclick="rpSetType('${k}')">${l}</button>`).join('');
+  return `<h3>One-Page 報告產生器</h3>
+    <div class="hint" style="margin-bottom:10px">選擇 Pillar 與報告類型，再勾選本頁要涵蓋的項目（最多 10 項，版面才不會過載）。專案頁依「廠區」分區、技術頁依「技術分類」分區，並自動計算人均效益。未勾選＝自動取前 10 項。</div>
+    <div class="field"><label>Pillar（事業領域）</label><div class="rp-tabs">${domBtns}</div></div>
+    <div class="field"><label>報告類型</label><div class="rp-tabs">${typeBtns}</div></div>
+    <div class="field"><label id="rpItemsLabel">涵蓋項目</label>
+      <div class="rs-tools"><button type="button" class="btn ghost sm" onclick="rpToggleAll(true)">全選</button><button type="button" class="btn ghost sm" onclick="rpToggleAll(false)">全部清除</button><span class="rs-count" id="rpCount"></span></div>
+      <div id="rpItemsBox"></div></div>
+    <div class="modal-foot"><button class="btn ghost" onclick="closeModal()">取消</button><button class="btn" onclick="generateReport()">產出 One-Page</button></div>`;
+}
+function rpSetDomain(d){ rpStashSel(); RP_DOMAIN=d; openModal(reportPickerHTML()); rpRefreshItems(); }
+function rpSetType(t){ rpStashSel(); RP_TYPE=t; openModal(reportPickerHTML()); rpRefreshItems(); }
+// 暫存目前勾選到記憶體（切換 Pillar/類型時不丟失）
+function rpStashSel(){ const box=document.getElementById('rpItemsBox'); if(!box) return; const sel=getChecked('rp_items'); DATA.meta.reportSel[rpSelKey(RP_DOMAIN,RP_TYPE)]=sel; }
+function rpRefreshItems(){
+  const box=document.getElementById('rpItemsBox'); if(!box) return;
+  const lab=document.getElementById('rpItemsLabel');
+  const saved=DATA.meta.reportSel[rpSelKey(RP_DOMAIN,RP_TYPE)];
+  let opts, preset;
+  if(RP_TYPE==='proj'){
+    const ps=rpDomainProjects(RP_DOMAIN);
+    if(lab) lab.textContent=`涵蓋專案（${RP_DOMAIN}，依廠區分區）`;
+    opts=ps.map(p=>({id:p.id,label:`${esc(p.name)}（${esc(g(p.group).name)}）`}));
+    preset=(saved&&saved.length)?saved:ps.map(p=>p.id);
+  } else {
+    const ms=rpDomainModules(RP_DOMAIN);
+    if(lab) lab.textContent=`涵蓋技術（${RP_DOMAIN}，依技術分類分區）`;
+    opts=ms.map(m=>({id:m.id,label:`${esc(m.name)}（${esc(m.category||'未分類')}）`}));
+    preset=(saved&&saved.length)?saved:ms.map(m=>m.id);
+  }
+  box.innerHTML = opts.length? checkboxGrid('rp_items',opts,preset)
+    : `<div class="hint" style="padding:10px;border:1px dashed var(--line);border-radius:10px">此 Pillar 目前沒有可選${RP_TYPE==='proj'?'專案':'技術'}。${RP_TYPE==='proj'?'請先到專案編輯指派 Pillar。':'請先於 Roadmap 連結技術模塊，或讓該領域專案使用模塊。'}</div>`;
+  rpUpdateCount();
+  box.querySelectorAll('input[name="rp_items"]').forEach(c=>c.addEventListener('change',rpUpdateCount));
+}
+const RP_MAX=10; // One-Page 版面最多顯示 10 個項目，避免資訊過載
+function rpToggleAll(v){ let n=0; document.querySelectorAll('input[name="rp_items"]').forEach(c=>{ c.checked = v && n<RP_MAX; if(c.checked) n++; }); rpUpdateCount(); }
+function rpUpdateCount(){ const el=document.getElementById('rpCount'); const boxes=[...document.querySelectorAll('input[name="rp_items"]')]; const on=boxes.filter(c=>c.checked).length;
+  boxes.forEach(c=>{ c.disabled = (!c.checked && on>=RP_MAX); }); // 已達上限時，鎖住其餘未勾選項目
+  if(el) el.textContent=`已選 ${on} / ${RP_MAX} 上限${on===0?'（＝自動取前 10 項）':''}`; }
+function generateReport(){
+  const tot=document.querySelectorAll('input[name="rp_items"]').length;
+  let sel=getChecked('rp_items'); if(!sel.length){ // 空＝自動取前 10 項
+    sel=[...document.querySelectorAll('input[name="rp_items"]')].map(c=>c.value); }
+  sel=sel.slice(0,RP_MAX); // 版面最多 10 項
+  DATA.meta.reportSel[rpSelKey(RP_DOMAIN,RP_TYPE)]=(sel.length===tot?[]:sel); save();
+  const html=(RP_TYPE==='proj')?buildProjReport(RP_DOMAIN,sel):buildTechReport(RP_DOMAIN,sel);
+  closeModal();
+  const w=window.open('','_blank');
+  if(!w){ alert('瀏覽器阻擋了新視窗，請允許彈出視窗後再試一次。'); return; }
+  w.document.open(); w.document.write(html); w.document.close();
+}
+// 共用：長條圖（沿用總覽風格；依分類分群、群內由高到低）
+function rpBarChart(items){
+  const ticks=[100,75,50,25,0];
+  const cols=items.map(it=>{const v=Math.max(0,Math.min(100,Math.round(+it.value||0)));
+    return `<div class="col"><div class="bar" style="height:${v}%;background:${it.color}"><span class="v">${Math.round(+it.value||0)}</span></div></div>`;}).join('');
+  const labels=items.map(it=>`<div class="xl">${esc(it.label)}</div>`).join('');
+  return `<div class="chart"><div class="yax">${ticks.map(t=>`<span>${t}</span>`).join('')}</div><div class="plot-col"><div class="plot"><div class="bars">${cols}</div></div><div class="xrow">${labels}</div></div></div>`;
+}
+function rpStatusBadge(raw){ const isNew=(raw==='New'); return `<span class="rp-badge ${isNew?'is-new':'is-ok'}">${isNew?'New':'正常'}</span>`; }
+function rpReportShell(opts){
+  // opts:{smallLabel,title,subtitle,perHeadTotal,benefitTotal,headsTotal,kpisHTML,chartTitle,chartHTML,cardsHTML}
+  const today=DATA.meta.updated||new Date().toISOString().slice(0,10);
+  const dept=(DATA.department&&DATA.department.name)||'';
+  const css=`*{box-sizing:border-box;margin:0;padding:0;font-family:"Microsoft JhengHei","PingFang TC","Heiti TC",sans-serif;}
+    @page{size:A4 landscape;margin:8mm;}
+    body{background:#fff;color:#1c2b45;padding:16px 24px;}
+    .rp-sheet{max-width:1120px;margin:0 auto;}
+    .rp-btns{display:flex;gap:8px;margin-bottom:14px;}
+    .rp-btns button{background:#1f4e96;color:#fff;border:none;padding:8px 18px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;}
+    .rp-btns button.ghost{background:#fff;color:#1f4e96;border:1px solid #1f4e96;}
+    .rp-head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #1f4e96;padding-bottom:8px;margin-bottom:14px;}
+    .rp-small{font-size:15px;color:#8a93a6;font-weight:700;letter-spacing:.5px;margin-bottom:2px;}
+    .rp-title{font-size:27px;font-weight:900;color:#16324f;line-height:1.1;}
+    .rp-sub{margin-top:6px;font-size:13px;color:#3a4a63;font-weight:700;display:flex;gap:16px;flex-wrap:wrap;align-items:center;}
+    .rp-sub .si{display:inline-flex;align-items:center;gap:5px;}
+    .rp-sub .dot{width:9px;height:9px;border-radius:2px;display:inline-block;}
+    .rp-sub .tot{color:#16324f;}
+    .rp-right{display:flex;flex-direction:column;align-items:flex-end;gap:7px;text-align:right;}
+    .eff-chip{display:inline-flex;align-items:baseline;gap:9px;background:linear-gradient(135deg,#16324f,#1f4e96);color:#fff;border-radius:14px;padding:11px 22px;box-shadow:0 3px 10px rgba(22,50,79,.25);}
+    .eff-k{font-size:14px;opacity:.85;}.eff-v{font-size:34px;font-weight:900;}.eff-u{font-size:13px;opacity:.85;}
+    .rp-upd{font-size:12px;color:#6b7a90;}
+    .rp-body{display:grid;grid-template-columns:minmax(320px,1fr) 1.15fr;gap:20px;align-items:stretch;}
+    .rp-left{display:flex;flex-direction:column;}
+    .kpis{flex:1;display:grid;gap:10px;margin-bottom:14px;grid-auto-rows:1fr;}
+    .kpi{border-radius:14px;padding:14px 16px;color:#fff;display:flex;flex-direction:column;justify-content:space-between;min-height:118px;}
+    .kpi-name{font-size:14px;font-weight:800;line-height:1.15;}
+    .kpi-mid{display:flex;justify-content:space-between;align-items:flex-end;gap:8px;}
+    .kpi-pct{font-size:34px;font-weight:900;line-height:1;}
+    .kpi-eff{text-align:right;font-size:10px;opacity:.92;line-height:1.2;}
+    .kpi-eff b{font-size:18px;font-weight:900;}
+    .kpi-bar{height:7px;background:rgba(255,255,255,.3);border-radius:5px;overflow:hidden;margin:4px 0;}
+    .kpi-bar i{display:block;height:100%;background:#fff;border-radius:5px;}
+    .kpi-meta{display:flex;flex-direction:column;gap:3px;font-size:11px;opacity:.95;}
+    .kpi-stat{display:flex;gap:12px;}
+    .kpi-stat b{font-size:13px;}
+    .chart-title{text-align:center;font-size:14px;font-weight:800;color:#3a4a63;margin:2px 0 7px;}
+    .chart{display:flex;gap:8px;padding-top:20px;}
+    .yax{display:flex;flex-direction:column;justify-content:space-between;height:200px;font-size:11px;color:#9aa6b8;text-align:right;flex:0 0 auto;}
+    .plot-col{flex:1;min-width:0;display:flex;flex-direction:column;}
+    .plot{height:200px;border-left:1px solid #e2e7ef;border-bottom:1px solid #e2e7ef;position:relative;}
+    .bars{position:absolute;inset:0;display:flex;align-items:flex-end;gap:3px;padding:0 5px;}
+    .col{flex:1;min-width:0;display:flex;align-items:flex-end;justify-content:center;height:100%;}
+    .bar{width:74%;min-height:2px;border-radius:5px 5px 0 0;position:relative;display:flex;justify-content:center;}
+    .bar .v{position:absolute;top:-16px;font-size:11px;font-weight:700;color:#3a4a63;}
+    .xrow{display:flex;gap:3px;padding:6px 5px 0;}
+    .xl{flex:1;min-width:0;font-size:9.5px;color:#6b7a90;text-align:center;line-height:1.2;word-break:break-word;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;}
+    .cards{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+    .rcard{border:1px solid #d7deea;border-radius:10px;padding:8px 11px;background:#fff;}
+    .rcard.hot{border:2px solid #2f6fd0;box-shadow:0 2px 8px rgba(47,111,208,.12);}
+    .rc-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px;}
+    .rc-name{font-size:14px;font-weight:800;color:#16324f;}
+    .rp-badge{font-size:11px;font-weight:800;padding:2px 9px;border-radius:7px;white-space:nowrap;}
+    .rp-badge.is-ok{background:#e3f5ea;color:#2a8c61;}.rp-badge.is-new{background:#e2f1fb;color:#1c8bb0;}
+    .rc-phase{font-size:12px;color:#3a4a63;margin-bottom:7px;min-height:16px;}
+    .rc-foot{display:flex;justify-content:space-between;align-items:baseline;border-top:1px dashed #e2e7ef;padding-top:6px;}
+    .rc-prog{font-size:13px;font-weight:800;color:#16324f;}.rc-eta{font-size:11px;color:#6b7a90;}
+    .rp-footer{margin-top:18px;font-size:11px;color:#9aa6b8;border-top:1px solid #eef1f6;padding-top:8px;}
+    @media print{.rp-btns{display:none;} body{padding:10px 14px;} .kpi,.eff-chip,.bar,.kpi-bar i,.rp-badge{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}`;
+  const payload=Object.assign({updated:today,dept:dept},opts.data||{});
+  return `<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><title>${esc(opts.title)}</title><style>${css}</style></head><body>
+    <div class="rp-btns"><button onclick="window.print()">🖨️ 列印 / 存 PDF</button><button onclick="exportPPT(this)">📊 存 PPT</button><button class="ghost" onclick="window.close()">關閉</button></div>
+    <div class="rp-sheet">
+    <div class="rp-head">
+      <div><div class="rp-small">${esc(opts.smallLabel)}</div><div class="rp-title">${esc(opts.title)}</div>
+        <div class="rp-sub">${opts.subtitle}</div></div>
+      <div class="rp-right">
+        <div class="eff-chip" title="總效益 ${opts.benefitTotal} 萬/年 ÷ 投入 ${opts.headsTotal} 人(FTE)"><span class="eff-k">人均效益</span><span class="eff-v">${opts.perHeadTotal}</span><span class="eff-u">萬/年·人</span></div>
+        <div class="rp-upd">Update ${esc(today)}</div></div>
+    </div>
+    <div class="rp-body">
+      <div class="rp-left"><div class="kpis" style="grid-template-columns:repeat(${opts.kpiCols||2},1fr)">${opts.kpisHTML}</div><div class="chart-title">${esc(opts.chartTitle)}</div>${opts.chartHTML}</div>
+      <div class="cards">${opts.cardsHTML}</div>
+    </div>
+    <div class="rp-footer">${dept?esc(dept)+'　｜　':''}©2022 AUO Corporation Proprietary and Confidential</div>
+    </div>
+    <script>window.RPT=${JSON.stringify(payload)};<\/script>
+    <script>
+    function rpLoadScript(src){ return new Promise(function(res,rej){ var s=document.createElement('script'); s.src=src; s.onload=res; s.onerror=function(){rej(new Error('load fail'));}; document.head.appendChild(s); }); }
+    function rpEnsurePptx(){ if(window.PptxGenJS) return Promise.resolve(); return rpLoadScript('https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js'); }
+    function rpHex(c){ return String(c||'#1f4e96').replace('#','').toUpperCase(); }
+    function exportPPT(btn){
+      var old=btn.textContent; btn.disabled=true; btn.textContent='產生中…';
+      rpEnsurePptx().then(rpBuildPptx).then(function(){ btn.textContent=old; btn.disabled=false; })
+        .catch(function(err){ btn.textContent=old; btn.disabled=false; alert('需要連網才能產生 PPT；離線時請改用「列印 / 存 PDF」。'); console.error(err); });
+    }
+    function rpBuildPptx(){
+      var R=window.RPT||{}; var NAVY='16324F';
+      var P=new PptxGenJS();
+      P.defineLayout({name:'W',width:13.33,height:7.5}); P.layout='W';
+      var slide=P.addSlide(); slide.background={color:'FFFFFF'};
+      // header
+      slide.addText(R.small||'', {x:0.45,y:0.30,w:9.5,h:0.25,fontSize:11,color:'6B7A90',bold:true});
+      slide.addText(R.title||'One-Page 報告', {x:0.45,y:0.54,w:9.5,h:0.5,fontSize:26,bold:true,color:NAVY});
+      slide.addText(R.subtitle||'', {x:0.45,y:1.12,w:9.5,h:0.3,fontSize:11,color:'3A4A63'});
+      slide.addShape(P.ShapeType.roundRect,{x:10.25,y:0.34,w:2.63,h:0.78,rectRadius:0.1,fill:{color:NAVY}});
+      slide.addText([{text:'人均效益 ',options:{fontSize:10,color:'C7D4E5'}},{text:String(R.perHeadTotal||0),options:{fontSize:34,bold:true,color:'FFFFFF'}},{text:' 萬/年·人',options:{fontSize:9,color:'C7D4E5'}}],{x:10.25,y:0.34,w:2.63,h:0.78,align:'center',valign:'middle'});
+      slide.addText('Update '+(R.updated||''),{x:10.25,y:1.16,w:2.63,h:0.22,align:'right',fontSize:9,color:'9AA6B8'});
+      slide.addShape(P.ShapeType.line,{x:0.45,y:1.52,w:12.43,h:0,line:{color:'2F6FD0',width:2}});
+      var bodyTop=1.72, bodyBot=7.02, leftX=0.45, leftW=6.2, rightX=6.9, rightW=5.98;
+      // KPI blocks
+      var kpis=R.kpis||[]; var cols=R.kpiCols||2; var rows=Math.max(1,Math.ceil(kpis.length/cols));
+      var kpiTop=bodyTop, gap=0.12;
+      // 每個方塊固定舒適高度（不論類別數都能完整顯示），chart 高度則依列數動態填滿剩餘空間
+      var ROW_H=1.18; var kpiH=rows*ROW_H+(rows-1)*gap;
+      var cw=(leftW-(cols-1)*gap)/cols, ch=(kpiH-(rows-1)*gap)/rows;
+      kpis.forEach(function(k,i){
+        var r=Math.floor(i/cols), c=i%cols; var x=leftX+c*(cw+gap), y=kpiTop+r*(ch+gap);
+        slide.addShape(P.ShapeType.roundRect,{x:x,y:y,w:cw,h:ch,rectRadius:0.08,fill:{color:rpHex(k.color)}});
+        slide.addText(k.name,{x:x+0.12,y:y+0.06,w:cw-0.24,h:0.26,fontSize:12,bold:true,color:'FFFFFF'});
+        slide.addText(String(k.avg)+'%',{x:x+0.12,y:y+0.3,w:cw*0.5,h:0.42,fontSize:24,bold:true,color:'FFFFFF',valign:'middle'});
+        slide.addText([{text:'人均效益\\n',options:{fontSize:8,color:'FFFFFF'}},{text:String(k.perHead)+' 萬/人',options:{fontSize:11,bold:true,color:'FFFFFF'}}],{x:x+cw*0.5,y:y+0.32,w:cw*0.5-0.12,h:0.4,align:'right',valign:'middle'});
+        var barY=y+ch-0.42, barX=x+0.12, barW=cw-0.24;
+        slide.addShape(P.ShapeType.roundRect,{x:barX,y:barY,w:barW,h:0.1,rectRadius:0.05,fill:{color:'FFFFFF',transparency:65}});
+        slide.addShape(P.ShapeType.roundRect,{x:barX,y:barY,w:Math.max(0.04,barW*(k.avg/100)),h:0.1,rectRadius:0.05,fill:{color:'FFFFFF'}});
+        slide.addText(k.n+' '+(R.unit||'項')+'　達成 '+k.done+'　落後 '+k.late,{x:barX,y:barY+0.13,w:barW,h:0.2,fontSize:9,color:'FFFFFF'});
+      });
+      // bar chart pinned bottom of left col — drawn to match PDF style (rounded-top colored bars, value above, clean axes)
+      var ci=R.chartItems||[]; var chartTop=kpiTop+kpiH+0.2;
+      slide.addText(R.chartTitle||'',{x:leftX,y:chartTop,w:leftW,h:0.26,align:'center',fontSize:13,bold:true,color:'3A4A63'});
+      if(ci.length){
+        var gutter=0.46, xlabH=0.5;
+        var plotX=leftX+gutter, plotW=leftW-gutter;
+        var plotTop=chartTop+0.4, baseY=bodyBot-xlabH, plotH=baseY-plotTop;
+        // y-axis ticks + axis lines (no horizontal gridlines, matching PDF)
+        [100,75,50,25,0].forEach(function(t){ var ty=baseY-plotH*(t/100);
+          slide.addText(String(t),{x:leftX-0.04,y:ty-0.09,w:gutter-0.08,h:0.18,align:'right',fontSize:8,color:'9AA6B8',wrap:false}); });
+        slide.addShape(P.ShapeType.line,{x:plotX,y:plotTop,w:0,h:plotH,line:{color:'E2E7EF',width:1}});
+        slide.addShape(P.ShapeType.line,{x:plotX,y:baseY,w:plotW,h:0,line:{color:'E2E7EF',width:1}});
+        var n=ci.length, slot=plotW/n, bw=Math.min(0.55,slot*0.74);
+        ci.forEach(function(o,i){ var v=Math.max(0,Math.min(100,Math.round(+o.value||0)));
+          var bh=Math.max(0.03,plotH*(v/100)); var cx=plotX+slot*i+slot/2; var bx=cx-bw/2; var by=baseY-bh;
+          slide.addShape(P.ShapeType.roundRect,{x:bx,y:by,w:bw,h:bh,rectRadius:0.05,fill:{color:rpHex(o.color)}});
+          slide.addText(String(v),{x:cx-0.4,y:by-0.24,w:0.8,h:0.2,align:'center',fontSize:10,bold:true,color:'3A4A63'});
+          slide.addText(String(o.label||''),{x:plotX+slot*i,y:baseY+0.04,w:slot,h:xlabH-0.04,align:'center',valign:'top',fontSize:8,color:'6B7A90',wrap:true});
+        });
+      }
+      // right cards
+      var cards=R.cards||[]; var cgap=0.14, ccols=2;
+      var cardW=(rightW-(ccols-1)*cgap)/ccols;
+      var crows=Math.max(1,Math.ceil(cards.length/ccols));
+      var cardH=Math.min(1.15,(bodyBot-bodyTop-(crows-1)*cgap)/crows);
+      cards.forEach(function(cd,i){
+        var r=Math.floor(i/ccols), c=i%ccols; var x=rightX+c*(cardW+cgap), y=bodyTop+r*(cardH+cgap);
+        if(y+cardH>bodyBot+0.03) return;
+        slide.addShape(P.ShapeType.roundRect,{x:x,y:y,w:cardW,h:cardH,rectRadius:0.08,fill:{color:'FFFFFF'},line:{color:'D7DEEA',width:1}});
+        slide.addText(cd.name,{x:x+0.12,y:y+0.08,w:cardW-1.0,h:0.3,fontSize:12,bold:true,color:NAVY});
+        var isNew=cd.status==='New';
+        slide.addText(isNew?'New':'正常',{x:x+cardW-0.85,y:y+0.1,w:0.72,h:0.26,align:'center',fontSize:9,bold:true,color:isNew?'1C8BB0':'2A8C61',fill:{color:isNew?'E2F1FB':'E3F5EA'}});
+        slide.addText('階段：'+(cd.phase||'—'),{x:x+0.12,y:y+0.42,w:cardW-0.24,h:0.24,fontSize:10,color:'3A4A63'});
+        slide.addText('進度：'+cd.prog+'%',{x:x+0.12,y:y+cardH-0.32,w:cardW*0.5,h:0.26,fontSize:11,bold:true,color:NAVY});
+        slide.addText('預計：'+(cd.eta||'—'),{x:x+cardW*0.5,y:y+cardH-0.32,w:cardW*0.5-0.12,h:0.26,align:'right',fontSize:9,color:'6B7A90'});
+      });
+      slide.addText((R.dept?R.dept+'　｜　':'')+'©2022 AUO Corporation Proprietary and Confidential',{x:0.45,y:7.12,w:12.43,h:0.25,fontSize:9,color:'9AA6B8'});
+      return P.writeFile({fileName:(R.title||'OnePage').replace(/\\s+/g,'_')+'.pptx'});
+    }
+    <\/script>
+  </body></html>`;
+}
+// ===== 專案頁（依廠區分區）=====
+function buildProjReport(domain, ids){
+  const all=rpDomainProjects(domain);
+  const projs=all.filter(p=>ids.includes(p.id));
+  const list=projs.length?projs:all;
+  // 廠區順序：依 DATA.groups，僅保留有資料者
+  const groups=(DATA.groups||[]).filter(gr=>list.some(p=>p.group===gr.id));
+  const groupStat=gr=>{ const ps=list.filter(p=>p.group===gr.id);
+    const avg=ps.length?Math.round(ps.reduce((a,p)=>a+projProgress(p),0)/ps.length):0;
+    let ben=0,heads=0; ps.forEach(p=>{const h=projHeadcount(p); if(h>0){ben+=projBenefit(p);heads+=h;}});
+    const done=ps.filter(p=>autoStatus({progress:projProgress(p),eta:p.eta}).label==='完成').length;
+    const late=ps.filter(p=>autoStatus({progress:projProgress(p),eta:p.eta}).cls==='warn').length;
+    return {gr,n:ps.length,avg,ben,heads,perHead:heads?Math.round(ben/heads):0,done,late}; };
+  const stats=groups.map(groupStat);
+  let tben=0,theads=0; list.forEach(p=>{const h=projHeadcount(p); if(h>0){tben+=projBenefit(p);theads+=h;}});
+  const perHeadTotal=theads?Math.round(tben/theads):0;
+  const kpisHTML=stats.map(s=>`<div class="kpi" style="background:${s.gr.color}">
+      <div class="kpi-name">${esc(s.gr.name)}</div>
+      <div class="kpi-mid"><div class="kpi-pct">${s.avg}%</div><div class="kpi-eff">人均效益<br><b>${s.perHead}</b> 萬/人</div></div>
+      <div class="kpi-bar"><i style="width:${s.avg}%"></i></div>
+      <div class="kpi-meta"><div class="kpi-stat"><span>${s.n} 條線</span><span>達成 <b>${s.done}</b></span><span>落後 <b>${s.late}</b></span></div></div></div>`).join('');
+  const subtitle=stats.map(s=>`<span class="si"><span class="dot" style="background:${s.gr.color}"></span>${esc(s.gr.name)}：${s.n} 條</span>`).join('')
+    +`<span class="si tot">總計：${list.length} 條</span>`;
+  const barItems=groups.flatMap(gr=>list.filter(p=>p.group===gr.id).sort((a,b)=>projProgress(b)-projProgress(a))
+      .map(p=>({label:rpShort(p.name),value:projProgress(p),color:gr.color})));
+  const cards=groups.flatMap(gr=>list.filter(p=>p.group===gr.id).sort((a,b)=>projProgress(b)-projProgress(a)));
+  const cardsHTML=cards.map(p=>{ const prog=projProgress(p);
+    return `<div class="rcard${p.status==='New'?'':''}">
+      <div class="rc-head"><span class="rc-name">${esc(p.name)}</span>${rpStatusBadge(p.status)}</div>
+      <div class="rc-phase">階段：${esc(projPhase(p)||'—')}</div>
+      <div class="rc-foot"><span class="rc-prog">進度：${prog}%</span><span class="rc-eta">預計：${esc(p.eta||'—')}</span></div></div>`; }).join('');
+  const kpiCols=(stats.length<=1?1:stats.length===2?2:stats.length===3?3:stats.length===4?2:3);
+  const pptSub=stats.map(s=>`${s.gr.name}：${s.n} 條`).join('　')+`　總計：${list.length} 條`;
+  return rpReportShell({ smallLabel:groups.map(gr=>gr.name).join(' / '), title:`${domain} 新線進度總表`,
+    subtitle, perHeadTotal, benefitTotal:tben, headsTotal:Math.round(theads*10)/10,
+    kpisHTML, kpiCols, chartTitle:`${domain} 線體完成度`, chartHTML:rpBarChart(barItems), cardsHTML,
+    data:{ small:groups.map(gr=>gr.name).join(' / '), title:`${domain} 新線進度總表`, subtitle:pptSub,
+      perHeadTotal, benefitTotal:tben, headsTotal:Math.round(theads*10)/10, unit:'條線', kpiCols,
+      chartTitle:`${domain} 線體完成度`,
+      kpis:stats.map(s=>({name:s.gr.name,color:s.gr.color,avg:s.avg,n:s.n,done:s.done,late:s.late,perHead:s.perHead})),
+      chartItems:barItems,
+      cards:cards.map(p=>({name:p.name,status:p.status,phase:projPhase(p)||'—',prog:projProgress(p),eta:p.eta||'—'})) } });
+}
+// ===== 技術頁（依技術分類分區）=====
+function buildTechReport(domain, ids){
+  const all=rpDomainModules(domain);
+  const mods=all.filter(m=>ids.includes(m.id));
+  const list=mods.length?mods:all;
+  const catNames=(DATA.moduleCats||[]).map(c=>c.name).filter(n=>list.some(m=>(m.category||'未分類')===n));
+  list.forEach(m=>{ const c=m.category||'未分類'; if(!catNames.includes(c)) catNames.push(c); });
+  // 某分類人均效益：用到該分類「所選模塊」的專案效益 ÷ 投入人力
+  const catStat=cat=>{ const ms=list.filter(m=>(m.category||'未分類')===cat);
+    const avg=ms.length?Math.round(ms.reduce((a,m)=>a+(+m.progress||0),0)/ms.length):0;
+    const modIds=ms.map(m=>m.id);
+    let ben=0,heads=0; (DATA.projects||[]).filter(p=>projModuleIds(p).some(id=>modIds.includes(id)))
+      .forEach(p=>{const h=projHeadcount(p); if(h>0){ben+=projBenefit(p);heads+=h;}});
+    const done=ms.filter(m=>autoStatus({progress:m.progress,eta:m.eta}).label==='完成').length;
+    const late=ms.filter(m=>autoStatus({progress:m.progress,eta:m.eta}).cls==='warn').length;
+    return {cat,color:catColor(cat),n:ms.length,avg,ben,heads,perHead:heads?Math.round(ben/heads):0,done,late}; };
+  const stats=catNames.map(catStat);
+  // 總人均效益：用到任一所選模塊的專案
+  const allModIds=list.map(m=>m.id);
+  let tben=0,theads=0; (DATA.projects||[]).filter(p=>projModuleIds(p).some(id=>allModIds.includes(id)))
+    .forEach(p=>{const h=projHeadcount(p); if(h>0){tben+=projBenefit(p);theads+=h;}});
+  const perHeadTotal=theads?Math.round(tben/theads):0;
+  const kpisHTML=stats.map(s=>`<div class="kpi" style="background:${s.color}">
+      <div class="kpi-name">${esc(s.cat)}</div>
+      <div class="kpi-mid"><div class="kpi-pct">${s.avg}%</div><div class="kpi-eff">人均效益<br><b>${s.perHead}</b> 萬/人</div></div>
+      <div class="kpi-bar"><i style="width:${s.avg}%"></i></div>
+      <div class="kpi-meta"><div class="kpi-stat"><span>${s.n} 項</span><span>達成 <b>${s.done}</b></span><span>落後 <b>${s.late}</b></span></div></div></div>`).join('');
+  const subtitle=stats.map(s=>`<span class="si"><span class="dot" style="background:${s.color}"></span>${esc(s.cat)}：${s.n} 項</span>`).join('')
+    +`<span class="si tot">總計：${list.length} 項</span>`;
+  const barItems=catNames.flatMap(cat=>list.filter(m=>(m.category||'未分類')===cat).sort((a,b)=>(+b.progress||0)-(+a.progress||0))
+      .map(m=>({label:rpShort(m.name),value:+m.progress||0,color:catColor(cat)})));
+  const cards=catNames.flatMap(cat=>list.filter(m=>(m.category||'未分類')===cat).sort((a,b)=>(+b.progress||0)-(+a.progress||0)));
+  const cardsHTML=cards.map(m=>`<div class="rcard">
+      <div class="rc-head"><span class="rc-name">${esc(m.name)}</span>${rpStatusBadge(m.status)}</div>
+      <div class="rc-phase">階段：${esc(m.phase||'—')}</div>
+      <div class="rc-foot"><span class="rc-prog">進度：${(+m.progress||0)}%</span><span class="rc-eta">預計：${esc(m.eta||'—')}</span></div></div>`).join('');
+  const kpiCols=(stats.length<=1?1:stats.length===2?2:stats.length===3?3:stats.length===4?2:3);
+  const pptSub=stats.map(s=>`${s.cat}：${s.n} 項`).join('　')+`　總計：${list.length} 項`;
+  return rpReportShell({ smallLabel:catNames.join(' / '), title:`${domain} 新技術進度總表`,
+    subtitle, perHeadTotal, benefitTotal:tben, headsTotal:Math.round(theads*10)/10,
+    kpisHTML, kpiCols, chartTitle:`${domain} 新技術完成度`, chartHTML:rpBarChart(barItems), cardsHTML,
+    data:{ small:catNames.join(' / '), title:`${domain} 新技術進度總表`, subtitle:pptSub,
+      perHeadTotal, benefitTotal:tben, headsTotal:Math.round(theads*10)/10, unit:'項', kpiCols,
+      chartTitle:`${domain} 新技術完成度`,
+      kpis:stats.map(s=>({name:s.cat,color:s.color,avg:s.avg,n:s.n,done:s.done,late:s.late,perHead:s.perHead})),
+      chartItems:barItems,
+      cards:cards.map(m=>({name:m.name,status:m.status,phase:m.phase||'—',prog:(+m.progress||0),eta:m.eta||'—'})) } });
+}
+// 卡片/長條圖用：去括號取短名
+function rpShort(name){ return String(name||'').replace(/[（(].*?[）)]/g,'').replace(/#/g,'').trim().slice(0,14); }
 function toggleDataMenu(e){ e.stopPropagation(); const m=document.getElementById('dataMenu'); m.style.display=(m.style.display==='none')?'block':'none'; }
 function closeDataMenu(){ const m=document.getElementById('dataMenu'); if(m) m.style.display='none'; }
 document.addEventListener('click', closeDataMenu);
