@@ -1831,8 +1831,9 @@ function rpReportShell(opts){
     .rc-prog{font-size:13px;font-weight:800;color:#16324f;}.rc-eta{font-size:11px;color:#6b7a90;}
     .rp-footer{margin-top:18px;font-size:11px;color:#9aa6b8;border-top:1px solid #eef1f6;padding-top:8px;}
     @media print{.rp-btns{display:none;} body{padding:10px 14px;} .kpi,.eff-chip,.bar,.kpi-bar i,.rp-badge{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}`;
+  const payload=Object.assign({updated:today,dept:dept},opts.data||{});
   return `<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><title>${esc(opts.title)}</title><style>${css}</style></head><body>
-    <div class="rp-btns"><button onclick="window.print()">🖨️ 列印 / 存 PDF</button><button class="ghost" onclick="window.close()">關閉</button></div>
+    <div class="rp-btns"><button onclick="window.print()">🖨️ 列印 / 存 PDF</button><button onclick="exportPPT(this)">📊 存 PPT</button><button class="ghost" onclick="window.close()">關閉</button></div>
     <div class="rp-sheet">
     <div class="rp-head">
       <div><div class="rp-small">${esc(opts.smallLabel)}</div><div class="rp-title">${esc(opts.title)}</div>
@@ -1847,6 +1848,85 @@ function rpReportShell(opts){
     </div>
     <div class="rp-footer">${dept?esc(dept)+'　｜　':''}©2022 AUO Corporation Proprietary and Confidential</div>
     </div>
+    <script>window.RPT=${JSON.stringify(payload)};<\/script>
+    <script>
+    function rpLoadScript(src){ return new Promise(function(res,rej){ var s=document.createElement('script'); s.src=src; s.onload=res; s.onerror=function(){rej(new Error('load fail'));}; document.head.appendChild(s); }); }
+    function rpEnsurePptx(){ if(window.PptxGenJS) return Promise.resolve(); return rpLoadScript('https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js'); }
+    function rpHex(c){ return String(c||'#1f4e96').replace('#','').toUpperCase(); }
+    function exportPPT(btn){
+      var old=btn.textContent; btn.disabled=true; btn.textContent='產生中…';
+      rpEnsurePptx().then(rpBuildPptx).then(function(){ btn.textContent=old; btn.disabled=false; })
+        .catch(function(err){ btn.textContent=old; btn.disabled=false; alert('需要連網才能產生 PPT；離線時請改用「列印 / 存 PDF」。'); console.error(err); });
+    }
+    function rpBuildPptx(){
+      var R=window.RPT||{}; var NAVY='16324F';
+      var P=new PptxGenJS();
+      P.defineLayout({name:'W',width:13.33,height:7.5}); P.layout='W';
+      var slide=P.addSlide(); slide.background={color:'FFFFFF'};
+      // header
+      slide.addText(R.small||'', {x:0.45,y:0.30,w:9.5,h:0.25,fontSize:11,color:'6B7A90',bold:true});
+      slide.addText(R.title||'One-Page 報告', {x:0.45,y:0.54,w:9.5,h:0.5,fontSize:26,bold:true,color:NAVY});
+      slide.addText(R.subtitle||'', {x:0.45,y:1.12,w:9.5,h:0.3,fontSize:11,color:'3A4A63'});
+      slide.addShape(P.ShapeType.roundRect,{x:10.25,y:0.34,w:2.63,h:0.78,rectRadius:0.1,fill:{color:NAVY}});
+      slide.addText([{text:'人均效益 ',options:{fontSize:10,color:'C7D4E5'}},{text:String(R.perHeadTotal||0),options:{fontSize:34,bold:true,color:'FFFFFF'}},{text:' 萬/年·人',options:{fontSize:9,color:'C7D4E5'}}],{x:10.25,y:0.34,w:2.63,h:0.78,align:'center',valign:'middle'});
+      slide.addText('Update '+(R.updated||''),{x:10.25,y:1.16,w:2.63,h:0.22,align:'right',fontSize:9,color:'9AA6B8'});
+      slide.addShape(P.ShapeType.line,{x:0.45,y:1.52,w:12.43,h:0,line:{color:'2F6FD0',width:2}});
+      var bodyTop=1.72, bodyBot=7.02, leftX=0.45, leftW=6.2, rightX=6.9, rightW=5.98;
+      // KPI blocks
+      var kpis=R.kpis||[]; var cols=R.kpiCols||2; var rows=Math.max(1,Math.ceil(kpis.length/cols));
+      var kpiTop=bodyTop, kpiH=2.55, gap=0.12;
+      var cw=(leftW-(cols-1)*gap)/cols, ch=(kpiH-(rows-1)*gap)/rows;
+      kpis.forEach(function(k,i){
+        var r=Math.floor(i/cols), c=i%cols; var x=leftX+c*(cw+gap), y=kpiTop+r*(ch+gap);
+        slide.addShape(P.ShapeType.roundRect,{x:x,y:y,w:cw,h:ch,rectRadius:0.08,fill:{color:rpHex(k.color)}});
+        slide.addText(k.name,{x:x+0.12,y:y+0.06,w:cw-0.24,h:0.26,fontSize:12,bold:true,color:'FFFFFF'});
+        slide.addText(String(k.avg)+'%',{x:x+0.12,y:y+0.3,w:cw*0.5,h:0.42,fontSize:24,bold:true,color:'FFFFFF',valign:'middle'});
+        slide.addText([{text:'人均效益\\n',options:{fontSize:8,color:'FFFFFF'}},{text:String(k.perHead)+' 萬/人',options:{fontSize:11,bold:true,color:'FFFFFF'}}],{x:x+cw*0.5,y:y+0.32,w:cw*0.5-0.12,h:0.4,align:'right',valign:'middle'});
+        var barY=y+ch-0.42, barX=x+0.12, barW=cw-0.24;
+        slide.addShape(P.ShapeType.roundRect,{x:barX,y:barY,w:barW,h:0.1,rectRadius:0.05,fill:{color:'FFFFFF',transparency:65}});
+        slide.addShape(P.ShapeType.roundRect,{x:barX,y:barY,w:Math.max(0.04,barW*(k.avg/100)),h:0.1,rectRadius:0.05,fill:{color:'FFFFFF'}});
+        slide.addText(k.n+' '+(R.unit||'項')+'　達成 '+k.done+'　落後 '+k.late,{x:barX,y:barY+0.13,w:barW,h:0.2,fontSize:9,color:'FFFFFF'});
+      });
+      // bar chart pinned bottom of left col — drawn to match PDF style (rounded-top colored bars, value above, clean axes)
+      var ci=R.chartItems||[]; var chartTop=kpiTop+kpiH+0.2;
+      slide.addText(R.chartTitle||'',{x:leftX,y:chartTop,w:leftW,h:0.26,align:'center',fontSize:13,bold:true,color:'3A4A63'});
+      if(ci.length){
+        var gutter=0.34, xlabH=0.5;
+        var plotX=leftX+gutter, plotW=leftW-gutter;
+        var plotTop=chartTop+0.4, baseY=bodyBot-xlabH, plotH=baseY-plotTop;
+        // y-axis ticks + axis lines (no horizontal gridlines, matching PDF)
+        [100,75,50,25,0].forEach(function(t){ var ty=baseY-plotH*(t/100);
+          slide.addText(String(t),{x:leftX-0.04,y:ty-0.09,w:gutter-0.02,h:0.18,align:'right',fontSize:8,color:'9AA6B8'}); });
+        slide.addShape(P.ShapeType.line,{x:plotX,y:plotTop,w:0,h:plotH,line:{color:'E2E7EF',width:1}});
+        slide.addShape(P.ShapeType.line,{x:plotX,y:baseY,w:plotW,h:0,line:{color:'E2E7EF',width:1}});
+        var n=ci.length, slot=plotW/n, bw=Math.min(0.55,slot*0.74);
+        ci.forEach(function(o,i){ var v=Math.max(0,Math.min(100,Math.round(+o.value||0)));
+          var bh=Math.max(0.03,plotH*(v/100)); var cx=plotX+slot*i+slot/2; var bx=cx-bw/2; var by=baseY-bh;
+          slide.addShape(P.ShapeType.roundRect,{x:bx,y:by,w:bw,h:bh,rectRadius:0.05,fill:{color:rpHex(o.color)}});
+          slide.addText(String(v),{x:cx-0.4,y:by-0.24,w:0.8,h:0.2,align:'center',fontSize:10,bold:true,color:'3A4A63'});
+          slide.addText(String(o.label||''),{x:plotX+slot*i,y:baseY+0.04,w:slot,h:xlabH-0.04,align:'center',valign:'top',fontSize:8,color:'6B7A90',wrap:true});
+        });
+      }
+      // right cards
+      var cards=R.cards||[]; var cgap=0.14, ccols=2;
+      var cardW=(rightW-(ccols-1)*cgap)/ccols;
+      var crows=Math.max(1,Math.ceil(cards.length/ccols));
+      var cardH=Math.min(1.15,(bodyBot-bodyTop-(crows-1)*cgap)/crows);
+      cards.forEach(function(cd,i){
+        var r=Math.floor(i/ccols), c=i%ccols; var x=rightX+c*(cardW+cgap), y=bodyTop+r*(cardH+cgap);
+        if(y+cardH>bodyBot+0.03) return;
+        slide.addShape(P.ShapeType.roundRect,{x:x,y:y,w:cardW,h:cardH,rectRadius:0.08,fill:{color:'FFFFFF'},line:{color:'D7DEEA',width:1}});
+        slide.addText(cd.name,{x:x+0.12,y:y+0.08,w:cardW-1.0,h:0.3,fontSize:12,bold:true,color:NAVY});
+        var isNew=cd.status==='New';
+        slide.addText(isNew?'New':'正常',{x:x+cardW-0.85,y:y+0.1,w:0.72,h:0.26,align:'center',fontSize:9,bold:true,color:isNew?'1C8BB0':'2A8C61',fill:{color:isNew?'E2F1FB':'E3F5EA'}});
+        slide.addText('階段：'+(cd.phase||'—'),{x:x+0.12,y:y+0.42,w:cardW-0.24,h:0.24,fontSize:10,color:'3A4A63'});
+        slide.addText('進度：'+cd.prog+'%',{x:x+0.12,y:y+cardH-0.32,w:cardW*0.5,h:0.26,fontSize:11,bold:true,color:NAVY});
+        slide.addText('預計：'+(cd.eta||'—'),{x:x+cardW*0.5,y:y+cardH-0.32,w:cardW*0.5-0.12,h:0.26,align:'right',fontSize:9,color:'6B7A90'});
+      });
+      slide.addText((R.dept?R.dept+'　｜　':'')+'©2022 AUO Corporation Proprietary and Confidential',{x:0.45,y:7.12,w:12.43,h:0.25,fontSize:9,color:'9AA6B8'});
+      return P.writeFile({fileName:(R.title||'OnePage').replace(/\\s+/g,'_')+'.pptx'});
+    }
+    <\/script>
   </body></html>`;
 }
 // ===== 專案頁（依廠區分區）=====
@@ -1880,9 +1960,17 @@ function buildProjReport(domain, ids){
       <div class="rc-head"><span class="rc-name">${esc(p.name)}</span>${rpStatusBadge(p.status)}</div>
       <div class="rc-phase">階段：${esc(projPhase(p)||'—')}</div>
       <div class="rc-foot"><span class="rc-prog">進度：${prog}%</span><span class="rc-eta">預計：${esc(p.eta||'—')}</span></div></div>`; }).join('');
+  const kpiCols=(stats.length<=1?1:stats.length===2?2:stats.length===3?3:stats.length===4?2:3);
+  const pptSub=stats.map(s=>`${s.gr.name}：${s.n} 條`).join('　')+`　總計：${list.length} 條`;
   return rpReportShell({ smallLabel:groups.map(gr=>gr.name).join(' / '), title:`${domain} 新線進度總表`,
     subtitle, perHeadTotal, benefitTotal:tben, headsTotal:Math.round(theads*10)/10,
-    kpisHTML, kpiCols:(stats.length<=1?1:stats.length===2?2:stats.length===3?3:stats.length===4?2:3), chartTitle:`${domain} 線體完成度`, chartHTML:rpBarChart(barItems), cardsHTML });
+    kpisHTML, kpiCols, chartTitle:`${domain} 線體完成度`, chartHTML:rpBarChart(barItems), cardsHTML,
+    data:{ small:groups.map(gr=>gr.name).join(' / '), title:`${domain} 新線進度總表`, subtitle:pptSub,
+      perHeadTotal, benefitTotal:tben, headsTotal:Math.round(theads*10)/10, unit:'條線', kpiCols,
+      chartTitle:`${domain} 線體完成度`,
+      kpis:stats.map(s=>({name:s.gr.name,color:s.gr.color,avg:s.avg,n:s.n,done:s.done,late:s.late,perHead:s.perHead})),
+      chartItems:barItems,
+      cards:cards.map(p=>({name:p.name,status:p.status,phase:projPhase(p)||'—',prog:projProgress(p),eta:p.eta||'—'})) } });
 }
 // ===== 技術頁（依技術分類分區）=====
 function buildTechReport(domain, ids){
@@ -1920,9 +2008,17 @@ function buildTechReport(domain, ids){
       <div class="rc-head"><span class="rc-name">${esc(m.name)}</span>${rpStatusBadge(m.status)}</div>
       <div class="rc-phase">階段：${esc(m.phase||'—')}</div>
       <div class="rc-foot"><span class="rc-prog">進度：${(+m.progress||0)}%</span><span class="rc-eta">預計：${esc(m.eta||'—')}</span></div></div>`).join('');
+  const kpiCols=(stats.length<=1?1:stats.length===2?2:stats.length===3?3:stats.length===4?2:3);
+  const pptSub=stats.map(s=>`${s.cat}：${s.n} 項`).join('　')+`　總計：${list.length} 項`;
   return rpReportShell({ smallLabel:catNames.join(' / '), title:`${domain} 新技術進度總表`,
     subtitle, perHeadTotal, benefitTotal:tben, headsTotal:Math.round(theads*10)/10,
-    kpisHTML, kpiCols:(stats.length<=1?1:stats.length===2?2:stats.length===3?3:stats.length===4?2:3), chartTitle:`${domain} 新技術完成度`, chartHTML:rpBarChart(barItems), cardsHTML });
+    kpisHTML, kpiCols, chartTitle:`${domain} 新技術完成度`, chartHTML:rpBarChart(barItems), cardsHTML,
+    data:{ small:catNames.join(' / '), title:`${domain} 新技術進度總表`, subtitle:pptSub,
+      perHeadTotal, benefitTotal:tben, headsTotal:Math.round(theads*10)/10, unit:'項', kpiCols,
+      chartTitle:`${domain} 新技術完成度`,
+      kpis:stats.map(s=>({name:s.cat,color:s.color,avg:s.avg,n:s.n,done:s.done,late:s.late,perHead:s.perHead})),
+      chartItems:barItems,
+      cards:cards.map(m=>({name:m.name,status:m.status,phase:m.phase||'—',prog:(+m.progress||0),eta:m.eta||'—'})) } });
 }
 // 卡片/長條圖用：去括號取短名
 function rpShort(name){ return String(name||'').replace(/[（(].*?[）)]/g,'').replace(/#/g,'').trim().slice(0,14); }
