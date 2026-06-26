@@ -1874,7 +1874,9 @@ function rpReportShell(opts){
       var bodyTop=1.72, bodyBot=7.02, leftX=0.45, leftW=6.2, rightX=6.9, rightW=5.98;
       // KPI blocks
       var kpis=R.kpis||[]; var cols=R.kpiCols||2; var rows=Math.max(1,Math.ceil(kpis.length/cols));
-      var kpiTop=bodyTop, kpiH=2.55, gap=0.12;
+      var kpiTop=bodyTop, gap=0.12;
+      // 每個方塊固定舒適高度（不論類別數都能完整顯示），chart 高度則依列數動態填滿剩餘空間
+      var ROW_H=1.18; var kpiH=rows*ROW_H+(rows-1)*gap;
       var cw=(leftW-(cols-1)*gap)/cols, ch=(kpiH-(rows-1)*gap)/rows;
       kpis.forEach(function(k,i){
         var r=Math.floor(i/cols), c=i%cols; var x=leftX+c*(cw+gap), y=kpiTop+r*(ch+gap);
@@ -1891,12 +1893,12 @@ function rpReportShell(opts){
       var ci=R.chartItems||[]; var chartTop=kpiTop+kpiH+0.2;
       slide.addText(R.chartTitle||'',{x:leftX,y:chartTop,w:leftW,h:0.26,align:'center',fontSize:13,bold:true,color:'3A4A63'});
       if(ci.length){
-        var gutter=0.34, xlabH=0.5;
+        var gutter=0.46, xlabH=0.5;
         var plotX=leftX+gutter, plotW=leftW-gutter;
         var plotTop=chartTop+0.4, baseY=bodyBot-xlabH, plotH=baseY-plotTop;
         // y-axis ticks + axis lines (no horizontal gridlines, matching PDF)
         [100,75,50,25,0].forEach(function(t){ var ty=baseY-plotH*(t/100);
-          slide.addText(String(t),{x:leftX-0.04,y:ty-0.09,w:gutter-0.02,h:0.18,align:'right',fontSize:8,color:'9AA6B8'}); });
+          slide.addText(String(t),{x:leftX-0.04,y:ty-0.09,w:gutter-0.08,h:0.18,align:'right',fontSize:8,color:'9AA6B8',wrap:false}); });
         slide.addShape(P.ShapeType.line,{x:plotX,y:plotTop,w:0,h:plotH,line:{color:'E2E7EF',width:1}});
         slide.addShape(P.ShapeType.line,{x:plotX,y:baseY,w:plotW,h:0,line:{color:'E2E7EF',width:1}});
         var n=ci.length, slot=plotW/n, bw=Math.min(0.55,slot*0.74);
