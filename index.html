@@ -358,6 +358,9 @@ function migrate(d){ // 相容舊資料：補上新欄位
   (d.members||[]).forEach(u=>{ if(u.capPct==null) u.capPct=100; if(!Array.isArray(u.skillRoles)) u.skillRoles=[]; });
   (d.projects||[]).forEach(p=>{ if(p.weight==null) p.weight=1; });
   (d.modules||[]).forEach(m=>{ if(m.weight==null) m.weight=1; });
+  // 生命週期狀態：active 進行中（預設）/ massprod 轉量產 / phaseout Phase-out（結案）。轉量產與 Phase-out 歸入「已完成」收合區
+  (d.projects||[]).forEach(p=>{ if(p.lifecycle==null) p.lifecycle='active'; });
+  (d.modules||[]).forEach(m=>{ if(m.lifecycle==null) m.lifecycle='active'; });
   // 專案技術平台(Pillar)：舊資料未指派時，依 Roadmap 連結自動推斷一個預設值
   (d.projects||[]).forEach(p=>{ if(p.pillarId==null){ const ri=(d.roadmapItems||[]).find(r=>(r.projectIds||[]).includes(p.id)); p.pillarId=ri?ri.pillar:''; } });
   if(!d.meta) d.meta={updated:DEFAULT_DATA.meta.updated}; d.meta.version=DEFAULT_DATA.meta.version;
@@ -802,6 +805,24 @@ function setAllProjectCollapse(v){ projectKeys().forEach(k=>PROJECT_COLLAPSE[k]=
 function toggleAllProjectCollapse(){ const ks=projectKeys(); const allCol=ks.length&&ks.every(k=>PROJECT_COLLAPSE[k]); setAllProjectCollapse(!allCol); }
 // 收合/展開全部切換鈕（共用）：allCol=目前是否全部收合
 const collapseToggleBtn=(fn,allCol)=>`<button class="btn sm ghost" onclick="${fn}()" title="收合／展開全部">${allCol?'⊞ 展開全部':'⊟ 收合全部'}</button>`;
+// ---- 生命週期狀態：進行中／轉量產／Phase-out ----
+const LIFECYCLE_OPTS=[['active','進行中'],['massprod','轉量產'],['phaseout','Phase-out（結案）']];
+function isDone(x){ return x && (x.lifecycle==='massprod'||x.lifecycle==='phaseout'); }
+function lifecycleLabel(lc){ return lc==='massprod'?'轉量產':lc==='phaseout'?'Phase-out':'進行中'; }
+function lifecycleBadge(lc){ if(lc==='massprod') return `<span class="badge ok" title="已轉量產">🏁 已完成（轉量產）</span>`;
+  if(lc==='phaseout') return `<span class="badge" style="background:#eef0f3;color:#7a8699;border-color:#dde1e8" title="已結案 Phase-out">⏹ Phase-out</span>`; return ''; }
+// 已完成（轉量產／Phase-out）收合狀態：專案以群組 id 為 key、技術以分類名為 key，預設收合
+let DONE_COLLAPSE={};
+function doneKey(scope,k){ return scope+'::'+k; }
+function toggleDoneCollapse(scope,k,fn){ const key=doneKey(scope,k); DONE_COLLAPSE[key]=(DONE_COLLAPSE[key]===undefined?false:!DONE_COLLAPSE[key]); window[fn](); }
+function isDoneCollapsed(scope,k){ const v=DONE_COLLAPSE[doneKey(scope,k)]; return v===undefined?true:v; }
+// 組內手動排序：在陣列中與「同群組／同分類且同完成狀態」的相鄰項目交換位置
+function moveItem(arr,id,dir,sameBucket,rerender){ const i=arr.findIndex(x=>x.id===id); if(i<0) return; let j=i+dir;
+  while(j>=0&&j<arr.length&&!sameBucket(arr[i],arr[j])) j+=dir;
+  if(j<0||j>=arr.length) return; const t=arr[i]; arr[i]=arr[j]; arr[j]=t; save(); rerender(); }
+function moveProj(id,dir){ moveItem(DATA.projects,id,dir,(a,b)=>a.group===b.group&&isDone(a)===isDone(b),renderProjects); }
+function moveMod(id,dir){ moveItem(DATA.modules,id,dir,(a,b)=>(a.category||'未分類')===(b.category||'未分類')&&isDone(a)===isDone(b),renderModules); }
+function reorderBtns(fn,id){ return `<button class="btn sm ghost" style="padding:0 6px" title="上移" onclick="${fn}('${id}',-1)">▲</button> <button class="btn sm ghost" style="padding:0 6px" title="下移" onclick="${fn}('${id}',1)">▼</button> `; }
 // ---- 一覽表欄位排序（各群組內排序，維持分組）----
 let PROJECT_SORT={key:null,dir:1}, MODULE_SORT={key:null,dir:1}, MEMBER_SORT={key:null,dir:1};
 const SORT_REF={project:()=>PROJECT_SORT, module:()=>MODULE_SORT, member:()=>MEMBER_SORT};
@@ -842,7 +863,12 @@ function renderProjects(){
         <button class="btn sm ghost" style="padding:0 6px" onclick="delGroup('${gr.id}')">🗑</button>`}</td></tr>`);
       if(col) return;
       if(!items.length){ rows.push('<tr><td colspan="8" style="color:var(--muted)">尚無專案</td></tr>'); return; }
-      applySort(items,PROJECT_SORT,PROJ_ACC).forEach(p=>{ rows.push(projectRow(p)); if(PROJ_STATION_OPEN[p.id]) rows.push(stationRows(p)); });
+      const sorted=applySort(items,PROJECT_SORT,PROJ_ACC);
+      const active=sorted.filter(p=>!isDone(p)), done=sorted.filter(isDone);
+      active.forEach((p,idx)=>{ rows.push(projectRow(p,idx,active.length)); if(PROJ_STATION_OPEN[p.id]) rows.push(stationRows(p)); });
+      if(done.length){ const dc=isDoneCollapsed('proj',key);
+        rows.push(`<tr class="donehead"><td colspan="8" style="background:#fafbfd;padding:5px 12px"><span onclick="toggleDoneCollapse('proj','${key}','renderProjects')" style="cursor:pointer;user-select:none;color:#7a8699;font-size:12px;font-weight:700">${dc?'▸':'▾'} ✅ 已完成（${done.length}）</span></td></tr>`);
+        if(!dc) done.forEach(p=>rows.push(projectRowCompact(p))); }
     };
     byGroup.forEach(b=>pushGroup(b.gr,b.items,false,b.gr.id));
     if(orphans.length) pushGroup({id:'',name:'未分類',color:'#b8c2d0'},orphans,true,'__orphan__');
@@ -855,14 +881,29 @@ function renderProjects(){
 
   document.getElementById('view').innerHTML=head+
     byGroup.map(b=>`<div style="margin-bottom:20px">${groupHeader(b.gr,b.gr.id)}
-        ${PROJECT_COLLAPSE[b.gr.id]?'':`<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(300px,1fr))">
-          ${b.items.map(p=>projectCard(p)).join('')||'<div class="empty">尚無專案</div>'}
-        </div>`}</div>`).join('')+
+        ${PROJECT_COLLAPSE[b.gr.id]?'':projCardBody(b.items,b.gr.id)}</div>`).join('')+
     (orphans.length?`<div style="margin-bottom:20px">
       <div style="margin-bottom:8px"><span onclick="toggleGroupCollapse('__orphan__')" style="cursor:pointer;user-select:none;font-weight:700;color:var(--muted)"><span style="margin-right:6px">${PROJECT_COLLAPSE['__orphan__']?'▸':'▾'}</span>未分類（${orphans.length}）</span><span style="font-size:11px;font-weight:400;color:var(--muted)">　編輯專案可重新指派廠區</span></div>
-      ${PROJECT_COLLAPSE['__orphan__']?'':`<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(300px,1fr))">
-        ${orphans.map(p=>projectCard(p)).join('')}
-      </div>`}</div>`:'');
+      ${PROJECT_COLLAPSE['__orphan__']?'':projCardBody(orphans,'__orphan__')}</div>`:'');
+}
+// 卡片視圖：群組內 active 卡片網格 + 已完成收合區（精簡卡片）
+function projCardBody(items,key){
+  if(!items.length) return '<div class="empty">尚無專案</div>';
+  const active=items.filter(p=>!isDone(p)), done=items.filter(isDone);
+  let html=`<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(300px,1fr))">${active.map(p=>projectCard(p)).join('')||'<div class="empty">尚無進行中專案</div>'}</div>`;
+  if(done.length){ const dc=isDoneCollapsed('proj',key);
+    html+=`<div style="margin-top:12px"><span onclick="toggleDoneCollapse('proj','${key}','renderProjects')" style="cursor:pointer;user-select:none;color:#7a8699;font-size:12px;font-weight:700">${dc?'▸':'▾'} ✅ 已完成（${done.length}）</span>`;
+    if(!dc) html+=`<div style="margin-top:8px;display:flex;flex-direction:column;gap:6px">${done.map(p=>projectCardCompact(p)).join('')}</div>`;
+    html+=`</div>`; }
+  return html;
+}
+function projectCardCompact(p){
+  return `<div class="card" style="border-left:4px solid ${g(p.group).color};padding:8px 12px;opacity:.78;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+    <span style="font-weight:700;font-size:13px;flex:1;min-width:120px">${esc(p.name)}</span>
+    ${lifecycleBadge(p.lifecycle)}
+    <span style="font-size:12px;white-space:nowrap"><b>${projProgress(p)}%</b></span>
+    ${PROJECT_EDIT?`<span style="white-space:nowrap">${reorderBtns('moveProj',p.id)}<button class="btn sm ghost" onclick="editProject('${p.id}')">編輯</button></span>`:''}
+  </div>`;
 }
 function projectRow(p){
   const h=projHeadcount(p);
@@ -875,7 +916,18 @@ function projectRow(p){
     <td style="font-size:12px;white-space:nowrap">👥 ${h||0} 人　💰 <b style="color:var(--blue)">${projBenefit(p)}</b> 萬/年</td>
     <td style="font-size:12px">PM：<b>${mems}</b></td>
     <td style="max-width:180px">${projModuleIds(p).map(id=>mod(id)?`<span class="tag" style="font-size:10px;padding:1px 6px">${esc(mod(id).name)}</span>`:'').filter(Boolean).join('')||'<span style="color:var(--muted);font-size:11px">—</span>'}</td>
-    <td style="white-space:nowrap">${PROJECT_EDIT?`<button class="btn sm ghost" onclick="editProject('${p.id}')">編輯</button> <button class="btn sm danger" onclick="delEntity('projects','${p.id}')">刪除</button>`:''}</td>
+    <td style="white-space:nowrap">${PROJECT_EDIT?`${reorderBtns('moveProj',p.id)}<button class="btn sm ghost" onclick="editProject('${p.id}')">編輯</button> <button class="btn sm danger" onclick="delEntity('projects','${p.id}')">刪除</button>`:''}</td>
+  </tr>`;
+}
+// 已完成（轉量產／Phase-out）精簡列：只留 名稱＋生命週期＋進度
+function projectRowCompact(p){
+  return `<tr id="proj-${p.id}" style="opacity:.66">
+    <td style="padding-top:4px;padding-bottom:4px"><span class="nm" style="font-size:12px">${esc(p.name)}</span></td>
+    <td style="font-size:11px;color:var(--muted);white-space:nowrap">${esc(p.customer||'')}</td>
+    <td style="font-size:12px"><b>${projProgress(p)}%</b></td>
+    <td>${lifecycleBadge(p.lifecycle)}</td>
+    <td colspan="3" style="font-size:11px;color:var(--muted)">${esc(projPhase(p)||'')}</td>
+    <td style="white-space:nowrap">${PROJECT_EDIT?`${reorderBtns('moveProj',p.id)}<button class="btn sm ghost" onclick="editProject('${p.id}')">編輯</button>`:''}</td>
   </tr>`;
 }
 // AOI 站點明細列（表格展開用）— 欄位與主專案列一致；無資訊欄留白
@@ -940,7 +992,7 @@ function projectCard(p){
       <span style="color:var(--muted)">${esc(p.gains||'')}</span></div>
     <div style="margin-top:6px">${memberChips(p, p.memberIds)}</div>
     ${stationCardList(p)}
-    ${PROJECT_EDIT?`<div class="cardrow"><button class="btn sm ghost" onclick="editProject('${p.id}')">編輯</button>
+    ${PROJECT_EDIT?`<div class="cardrow">${reorderBtns('moveProj',p.id)}<button class="btn sm ghost" onclick="editProject('${p.id}')">編輯</button>
       <button class="btn sm danger" onclick="delEntity('projects','${p.id}')">刪除</button></div>`:''}
   </div>`;
 }
@@ -985,8 +1037,13 @@ function renderModules(){
       const col=catColor(c); const cc=MODULE_COLLAPSE[c];
       rows.push(`<tr class="teamrow"><td colspan="6"><span onclick="toggleCatCollapse('${esc(c)}')" style="cursor:pointer;user-select:none"><span style="margin-right:6px">${cc?'▸':'▾'}</span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${col};margin-right:6px"></span>${esc(c)}（${items.length}）</span>${catBtns(c)}</td></tr>`);
       if(cc) return;
-      if(!items.length) rows.push('<tr><td colspan="6" style="color:var(--muted)">尚無模塊</td></tr>');
-      applySort(items,MODULE_SORT,MOD_ACC).forEach(m=>rows.push(moduleRow(m)));
+      if(!items.length){ rows.push('<tr><td colspan="6" style="color:var(--muted)">尚無模塊</td></tr>'); return; }
+      const sorted=applySort(items,MODULE_SORT,MOD_ACC);
+      const active=sorted.filter(m=>!isDone(m)), done=sorted.filter(isDone);
+      active.forEach(m=>rows.push(moduleRow(m)));
+      if(done.length){ const dc=isDoneCollapsed('mod',c);
+        rows.push(`<tr class="donehead"><td colspan="6" style="background:#fafbfd;padding:5px 12px"><span onclick="toggleDoneCollapse('mod','${esc(c)}','renderModules')" style="cursor:pointer;user-select:none;color:#7a8699;font-size:12px;font-weight:700">${dc?'▸':'▾'} ✅ 已完成（${done.length}）</span></td></tr>`);
+        if(!dc) done.forEach(m=>rows.push(moduleRowCompact(m))); }
     });
     document.getElementById('view').innerHTML=head+`
       <table class="mtable">
@@ -1006,10 +1063,26 @@ function renderModules(){
           <span style="font-size:12px;color:${col};width:12px;display:inline-block">${cc?'▸':'▾'}</span>
           <span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:${col}"></span>
           <span style="font-weight:700;color:${col}">${esc(c)}（${items.length}）</span></span>${catBtns(c)}</div>
-      ${cc?'':`<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(300px,1fr))">
-        ${items.map(m=>moduleCard(m)).join('')||'<div class="empty">尚無模塊</div>'}
-      </div>`}</div>`;
+      ${cc?'':modCardBody(items,c)}</div>`;
     }).join('');
+}
+function modCardBody(items,cat){
+  if(!items.length) return '<div class="empty">尚無模塊</div>';
+  const active=items.filter(m=>!isDone(m)), done=items.filter(isDone);
+  let html=`<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(300px,1fr))">${active.map(m=>moduleCard(m)).join('')||'<div class="empty">尚無進行中模塊</div>'}</div>`;
+  if(done.length){ const dc=isDoneCollapsed('mod',cat);
+    html+=`<div style="margin-top:12px"><span onclick="toggleDoneCollapse('mod','${esc(cat)}','renderModules')" style="cursor:pointer;user-select:none;color:#7a8699;font-size:12px;font-weight:700">${dc?'▸':'▾'} ✅ 已完成（${done.length}）</span>`;
+    if(!dc) html+=`<div style="margin-top:8px;display:flex;flex-direction:column;gap:6px">${done.map(m=>moduleCardCompact(m)).join('')}</div>`;
+    html+=`</div>`; }
+  return html;
+}
+function moduleCardCompact(m){
+  return `<div class="card" style="border-left:4px solid ${catColor(m.category)};padding:8px 12px;opacity:.78;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+    <span style="font-weight:700;font-size:13px;flex:1;min-width:120px">${esc(m.name)}</span>
+    ${lifecycleBadge(m.lifecycle)}
+    <span style="font-size:12px;white-space:nowrap"><b>${m.progress||0}%</b></span>
+    ${MODULE_EDIT?`<span style="white-space:nowrap">${reorderBtns('moveMod',m.id)}<button class="btn sm ghost" onclick="editModule('${m.id}')">編輯</button></span>`:''}
+  </div>`;
 }
 function editModuleCat(id){
   const c=id?(DATA.moduleCats||[]).find(x=>x.id===id):null;
@@ -1054,7 +1127,16 @@ function moduleRow(m){
     <td>${modStatusBadge(m)}</td>
     <td style="max-width:220px">${caps}</td>
     <td style="font-size:12px;max-width:220px">PM：${owners}${roles?'<br><span style="font-size:11px;color:var(--muted)">'+roles+'</span>':''}</td>
-    <td style="white-space:nowrap">${MODULE_EDIT?`<button class="btn sm ghost" onclick="editModule('${m.id}')">編輯</button> <button class="btn sm danger" onclick="delEntity('modules','${m.id}')">刪除</button>`:''}</td>
+    <td style="white-space:nowrap">${MODULE_EDIT?`${reorderBtns('moveMod',m.id)}<button class="btn sm ghost" onclick="editModule('${m.id}')">編輯</button> <button class="btn sm danger" onclick="delEntity('modules','${m.id}')">刪除</button>`:''}</td>
+  </tr>`;
+}
+function moduleRowCompact(m){
+  return `<tr id="mod-${m.id}" style="opacity:.66">
+    <td style="padding-top:4px;padding-bottom:4px"><span class="nm" style="font-size:12px">${esc(m.name)}</span></td>
+    <td style="font-size:12px"><b>${m.progress||0}%</b></td>
+    <td>${lifecycleBadge(m.lifecycle)}</td>
+    <td colspan="2" style="font-size:11px;color:var(--muted)">${esc(m.phase||'')}</td>
+    <td style="white-space:nowrap">${MODULE_EDIT?`${reorderBtns('moveMod',m.id)}<button class="btn sm ghost" onclick="editModule('${m.id}')">編輯</button>`:''}</td>
   </tr>`;
 }
 function moduleCard(m){
@@ -1066,7 +1148,7 @@ function moduleCard(m){
       <div style="text-align:right;font-size:12px;color:var(--muted)">預計<br>${esc(m.eta||'-')}</div></div>
     <div style="margin-top:8px">能力：${(m.caps||[]).map(c=>`<span class="tag">${esc(c)}</span>`).join('')}</div>
     <div style="margin-top:6px">${memberChips(m, m.ownerIds)}</div>
-    ${MODULE_EDIT?`<div class="cardrow"><button class="btn sm ghost" onclick="editModule('${m.id}')">編輯</button>
+    ${MODULE_EDIT?`<div class="cardrow">${reorderBtns('moveMod',m.id)}<button class="btn sm ghost" onclick="editModule('${m.id}')">編輯</button>
       <button class="btn sm danger" onclick="delEntity('modules','${m.id}')">刪除</button></div>`:''}
   </div>`;
 }
@@ -1369,7 +1451,8 @@ function editProject(id){
     <div class="field"><label>目前階段</label><input id="f_phase" value="${esc(p.phase)}"><div class="hint">填寫整個主專案的目前階段／狀態；各子專案（站點）階段請於下方各站個別填寫</div></div>
     <div class="row"><div class="field" style="flex:1"><label>進度 %</label><input id="f_progress" type="number" min="0" max="100" value="${p.progress||0}" oninput="refreshAutoStatus()"><div class="hint" id="f_progressHint" style="display:none">有 AOI 站點時，線進度＝各站平均自動計算</div></div>
       <div class="field" style="flex:1"><label>預計完成日</label><input id="f_eta" type="date" value="${toDateInput(p.eta)}" onchange="refreshAutoStatus()"></div>
-      <div class="field" style="flex:1"><label>狀態（自動）</label><div id="f_statusAuto" style="padding:7px 0">—</div><div class="hint">依進度與預計日自動判定</div></div></div>
+      <div class="field" style="flex:1"><label>狀態（自動）</label><div id="f_statusAuto" style="padding:7px 0">—</div><div class="hint">依進度與預計日自動判定</div></div>
+      <div class="field" style="flex:1"><label>生命週期</label><select id="f_lifecycle">${LIFECYCLE_OPTS.map(([v,l])=>`<option value="${v}" ${(p.lifecycle||'active')===v?'selected':''}>${l}</option>`).join('')}</select><div class="hint">轉量產／Phase-out 會收到列表最下方「已完成」區</div></div></div>
     <div class="row" style="background:#f4f7fc;border-radius:8px;padding:10px 10px 0;margin-bottom:12px">
       <div class="field" style="flex:1"><label>重要性權重</label><input id="f_weight" type="number" min="0" step="0.1" value="${p.weight==null?1:p.weight}"><div class="hint">數值越大越重要，放大成員投入工時（預設 1）</div></div>
       <div class="field" style="flex:1.4"><label style="white-space:nowrap">投入人數（等效人力）</label><div style="font-size:20px;font-weight:800;color:var(--blue);padding:6px 0;white-space:nowrap">${Math.round(projFTE(p)*10)/10} 人</div><div class="hint">自動依成員角色工時%加總換算，無需手動填寫</div></div>
@@ -1435,7 +1518,7 @@ function saveProject(pid,exists){
   const stations=EDIT_STATIONS.filter(s=>s.name||s.phase||s.moduleIds.length||s.ownerIds.length||(s.roles||[]).length||+s.benefit).map(s=>({id:s.id||uid('st'),name:s.name,phase:s.phase||'',progress:+s.progress||0,eta:s.eta||'',benefit:+s.benefit||0,moduleIds:[...s.moduleIds],ownerIds:[...s.ownerIds],roles:[...(s.roles||[])],roleMembers:JSON.parse(JSON.stringify(s.roleMembers||{}))}));
   const o={ id:pid, name:val('f_name'), group:val('f_group'), pillarId:val('f_pillar'), customer:val('f_customer'), phase:val('f_phase'),
     progress:+val('f_progress')||0, eta:fromDateInput(val('f_eta')),
-    headcount:0, benefit:+val('f_benefit')||0, gains:val('f_gains'), weight:+val('f_weight')||1,
+    headcount:0, benefit:+val('f_benefit')||0, gains:val('f_gains'), weight:+val('f_weight')||1, lifecycle:val('f_lifecycle')||'active',
     needs:val('f_needs').split(/[,，]/).map(s=>s.trim()).filter(Boolean), moduleIds:(orig?orig.moduleIds||[]:[]), memberIds:getChecked('f_mems'), roleMembers:(orig?orig.roleMembers||{}:{}), stations };
   if(stations.length){ o.progress=projProgress(o); o.benefit=projBenefit(o); }
   o.status=autoStatus({progress:projProgress(o),eta:o.eta}).label; // 自動判定後存入，供匯出/相容
@@ -1531,7 +1614,8 @@ function editModule(id){
     <div class="field"><label>目前階段</label><input id="f_phase" value="${esc(m.phase)}"></div>
     <div class="row"><div class="field" style="flex:1"><label>進度 %</label><input id="f_progress" type="number" min="0" max="100" value="${m.progress}"></div>
       <div class="field" style="flex:1"><label>預計完成日</label><input id="f_eta" type="date" value="${toDateInput(m.eta)}"></div>
-      <div class="field" style="flex:1"><label>重要性權重</label><input id="f_weight" type="number" min="0" step="0.1" value="${m.weight==null?1:m.weight}"><div class="hint">放大成員投入工時（預設 1）</div></div></div>
+      <div class="field" style="flex:1"><label>重要性權重</label><input id="f_weight" type="number" min="0" step="0.1" value="${m.weight==null?1:m.weight}"><div class="hint">放大成員投入工時（預設 1）</div></div>
+      <div class="field" style="flex:1"><label>生命週期</label><select id="f_lifecycle">${LIFECYCLE_OPTS.map(([v,l])=>`<option value="${v}" ${(m.lifecycle||'active')===v?'selected':''}>${l}</option>`).join('')}</select><div class="hint">轉量產／Phase-out 收到「已完成」區</div></div></div>
     <div class="field"><label>能力標籤</label><input id="f_caps" value="${esc((m.caps||[]).join(', '))}"><div class="hint">逗號分隔</div></div>
     <div class="field"><label>PM（負責人）</label>${checkboxGrid('f_owners',DATA.members.map(u=>({id:u.id,label:u.name})),m.ownerIds||[])}</div>
     ${roleMemberFields('f_mrole', m, '模塊成員（依功能別）')}
@@ -1577,7 +1661,7 @@ function teamSelectChange(sel){
 }
 function saveModule(mid,exists){
   const o={ id:mid, name:val('f_name'), category:val('f_cat')||'未分類', progress:+val('f_progress')||0, phase:val('f_phase'),
-    eta:fromDateInput(val('f_eta')), status:val('f_status'), weight:+val('f_weight')||1, caps:val('f_caps').split(/[,，]/).map(s=>s.trim()).filter(Boolean), ownerIds:getChecked('f_owners'), roleMembers:collectRoleMembers('f_mrole') };
+    eta:fromDateInput(val('f_eta')), status:val('f_status'), weight:+val('f_weight')||1, lifecycle:val('f_lifecycle')||'active', caps:val('f_caps').split(/[,，]/).map(s=>s.trim()).filter(Boolean), ownerIds:getChecked('f_owners'), roleMembers:collectRoleMembers('f_mrole') };
   if(!o.name){ alert('請輸入模塊名稱'); return; }
   if(o.category && o.category!=='未分類'){ if(!DATA.moduleCats) DATA.moduleCats=[];
     if(!DATA.moduleCats.some(c=>c.name===o.category)) DATA.moduleCats.push({id:uid('mc'),name:o.category,color:pickColor(DATA.moduleCats.length)}); }
