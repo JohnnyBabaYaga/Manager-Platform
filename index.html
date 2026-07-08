@@ -363,6 +363,8 @@ function migrate(d){ // 相容舊資料：補上新欄位
   (d.modules||[]).forEach(m=>{ if(m.lifecycle==null) m.lifecycle='active'; });
   // 專案技術平台(Pillar)：舊資料未指派時，依 Roadmap 連結自動推斷一個預設值
   (d.projects||[]).forEach(p=>{ if(p.pillarId==null){ const ri=(d.roadmapItems||[]).find(r=>(r.projectIds||[]).includes(p.id)); p.pillarId=ri?ri.pillar:''; } });
+  // 專案事業領域(Display／Mobility／Vertical)：舊資料無此欄時，由既有 pillar 的領域帶入一次
+  (d.projects||[]).forEach(p=>{ if(p.domain==null){ const pl=(d.pillars||[]).find(x=>x.id===p.pillarId); p.domain=pl?pl.domain:''; } });
   if(!d.meta) d.meta={updated:DEFAULT_DATA.meta.updated}; d.meta.version=DEFAULT_DATA.meta.version;
   if(!d.meta.title) d.meta.title='部門指揮中心';
   // One-Page 報告：記住各「Pillar｜類型」頁面上次勾選涵蓋的專案／技術（鍵例："Mobility|proj"）。空＝全部納入
@@ -470,7 +472,8 @@ function projFTE(p){ let s=0; projAllMemberIds(p).forEach(uId=>{ s += personProj
 function projHeadcount(p){ return Math.round(projFTE(p)*10)/10; }
 // 專案所屬技術平台(Pillar)與其事業領域(Mobility/Display)
 function projPillar(p){ return (DATA.pillars||[]).find(x=>x.id===(p&&p.pillarId)) || null; }
-function projDomain(p){ const pl=projPillar(p); return pl?pl.domain:'未分類'; }
+// 專案事業領域：直接讀 p.domain（Display／Mobility／Vertical）；舊資料無此欄則回退由 pillar 推導
+function projDomain(p){ if(p&&p.domain) return p.domain; const pl=projPillar(p); return pl?pl.domain:''; }
 // 主專案目前階段：由使用者手動填寫，描述整個主專案的狀態（子專案各站階段另於站點顯示）
 function projPhase(p){ return (p&&p.phase)||''; }
 // 部門人均產出效益 = 總效益 ÷ 總投入人數（只計有投入人力的專案）
@@ -795,9 +798,10 @@ function setProjectView(v){ PROJECT_VIEW=v; renderProjects(); }
 let PROJECT_EDIT=false;
 function toggleProjectEdit(){ PROJECT_EDIT=!PROJECT_EDIT; renderProjects(); }
 const editToggleBtn=(on,fn)=>`<button class="btn sm ${on?'':'ghost'}" onclick="${fn}()">${on?'✓ 完成編輯':'✏️ 編輯模式'}</button>`;
-// 廠區收折狀態（key=群組id，未分類=__orphan__）
+// 收折狀態（Pillar 層 key='pl:'+pillarId；廠區層 key=pillarId+'::'+群組id）
 let PROJECT_COLLAPSE={};
-function projectKeys(){ const keys=DATA.groups.map(x=>x.id); if(DATA.projects.some(p=>!keys.includes(p.group))) keys.push('__orphan__'); return keys; }
+// 收合／展開全部：以事業領域大分類為單位
+function projectKeys(){ return projDomainTree().map(n=>n.key); }
 function toggleGroupCollapse(k){ PROJECT_COLLAPSE[k]=!PROJECT_COLLAPSE[k]; renderProjects(); }
 let PROJ_STATION_OPEN={};
 function toggleProjStations(id){ PROJ_STATION_OPEN[id]=!PROJ_STATION_OPEN[id]; renderProjects(); }
@@ -820,7 +824,7 @@ function isDoneCollapsed(scope,k){ const v=DONE_COLLAPSE[doneKey(scope,k)]; retu
 function moveItem(arr,id,dir,sameBucket,rerender){ const i=arr.findIndex(x=>x.id===id); if(i<0) return; let j=i+dir;
   while(j>=0&&j<arr.length&&!sameBucket(arr[i],arr[j])) j+=dir;
   if(j<0||j>=arr.length) return; const t=arr[i]; arr[i]=arr[j]; arr[j]=t; save(); rerender(); }
-function moveProj(id,dir){ moveItem(DATA.projects,id,dir,(a,b)=>a.group===b.group&&isDone(a)===isDone(b),renderProjects); }
+function moveProj(id,dir){ moveItem(DATA.projects,id,dir,(a,b)=>projDomain(a)===projDomain(b)&&a.group===b.group&&isDone(a)===isDone(b),renderProjects); }
 function moveMod(id,dir){ moveItem(DATA.modules,id,dir,(a,b)=>(a.category||'未分類')===(b.category||'未分類')&&isDone(a)===isDone(b),renderModules); }
 function reorderBtns(fn,id){ return `<button class="btn sm ghost" style="padding:0 6px" title="上移" onclick="${fn}('${id}',-1)">▲</button> <button class="btn sm ghost" style="padding:0 6px" title="下移" onclick="${fn}('${id}',1)">▼</button> `; }
 // ---- 一覽表欄位排序（各群組內排序，維持分組）----
@@ -833,10 +837,27 @@ function sortTh(which,key,label,style){ const s=SORT_REF[which](); const on=s.ke
 const PROJ_ACC={ name:p=>p.name, customer:p=>p.customer, progress:p=>projProgress(p), status:p=>p.status||'', benefit:p=>projBenefit(p) };
 const MOD_ACC={ name:m=>m.name, progress:m=>+m.progress||0, status:m=>m.status||'' };
 const MEM_ACC={ name:u=>u.name, load:u=>memberLoad(u.id).total };
-function renderProjects(){
-  const byGroup=DATA.groups.map(gr=>({gr,items:DATA.projects.filter(p=>p.group===gr.id)}));
+// 專案分組樹：事業領域(大分類，Display／Mobility／Vertical) → 廠區(次分類)。只列有專案的領域；未指派殿後
+function projDomainTree(){
   const groupIds=DATA.groups.map(x=>x.id);
-  const orphans=DATA.projects.filter(p=>!groupIds.includes(p.group));
+  const buildGroups=(projs)=>{
+    const arr=[];
+    DATA.groups.forEach(gr=>{ const items=projs.filter(p=>p.group===gr.id); if(items.length) arr.push({gr,items,orphan:false}); });
+    const orphans=projs.filter(p=>!groupIds.includes(p.group));
+    if(orphans.length) arr.push({gr:{id:'',name:'未分類廠區',color:'#b8c2d0'},items:orphans,orphan:true});
+    return arr;
+  };
+  const tree=[];
+  ROADMAP_DOMAINS.forEach(dom=>{
+    const projs=DATA.projects.filter(p=>projDomain(p)===dom);
+    if(projs.length) tree.push({domain:dom,color:domainColor(dom),key:'dom:'+dom,count:projs.length,groups:buildGroups(projs)});
+  });
+  const noDom=DATA.projects.filter(p=>!ROADMAP_DOMAINS.includes(projDomain(p)));
+  if(noDom.length) tree.push({domain:'未指派領域',color:'#b8c2d0',key:'dom:__none__',count:noDom.length,groups:buildGroups(noDom)});
+  return tree;
+}
+function renderProjects(){
+  const tree=projDomainTree();
   const ed=PROJECT_EDIT;
   const head=`
     <div class="section-title">專案進度 <span class="count">共 ${DATA.projects.length} 案</span>
@@ -846,19 +867,21 @@ function renderProjects(){
       ${collapseToggleBtn('toggleAllProjectCollapse', projectKeys().length&&projectKeys().every(k=>PROJECT_COLLAPSE[k]))}
       ${ed?`<button class="btn sm" onclick="editProject()">＋ 新增專案</button>`:''}
       ${editToggleBtn(ed,'toggleProjectEdit')}</div>`;
-  const groupHeader=(gr,key)=>{ const col=PROJECT_COLLAPSE[key]; return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+  // 廠區次分類標題（卡片視圖用）；count=此領域下該廠區的專案數
+  const groupHeader=(gr,key,count)=>{ const col=PROJECT_COLLAPSE[key]; return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
       <span onclick="toggleGroupCollapse('${key}')" style="cursor:pointer;user-select:none;display:inline-flex;align-items:center;gap:8px">
         <span style="font-size:12px;color:${gr.color};width:12px;display:inline-block">${col?'▸':'▾'}</span>
         <span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:${gr.color}"></span>
-        <span style="font-weight:700;color:${gr.color}">${esc(gr.name)}（${DATA.projects.filter(p=>p.group===gr.id).length}）</span></span>
-      ${ed?`<button class="btn sm ghost" style="padding:1px 7px" onclick="editGroup('${gr.id}')" title="編輯廠區">✎</button>
+        <span style="font-weight:700;color:${gr.color}">${esc(gr.name)}（${count}）</span></span>
+      ${(ed&&gr.id)?`<button class="btn sm ghost" style="padding:1px 7px" onclick="editGroup('${gr.id}')" title="編輯廠區">✎</button>
       <button class="btn sm ghost" style="padding:1px 7px" onclick="delGroup('${gr.id}')" title="刪除廠區">🗑</button>`:''}</div>`; };
 
   if(PROJECT_VIEW==='table'){
     const rows=[];
+    // 廠區次分組列（含 active／已完成收合區）
     const pushGroup=(gr,items,orphan,key)=>{
       const col=PROJECT_COLLAPSE[key];
-      rows.push(`<tr class="teamrow"><td colspan="8"><span onclick="toggleGroupCollapse('${key}')" style="cursor:pointer;user-select:none"><span style="margin-right:6px">${col?'▸':'▾'}</span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${gr.color};margin-right:6px"></span>${esc(gr.name)}（${items.length}）</span>${(orphan||!ed)?'':`
+      rows.push(`<tr class="teamrow"><td colspan="8" style="padding-left:22px"><span onclick="toggleGroupCollapse('${key}')" style="cursor:pointer;user-select:none"><span style="margin-right:6px">${col?'▸':'▾'}</span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${gr.color};margin-right:6px"></span>${esc(gr.name)}（${items.length}）</span>${(orphan||!ed)?'':`
         <button class="btn sm ghost" style="padding:0 6px;margin-left:6px" onclick="editGroup('${gr.id}')">✎</button>
         <button class="btn sm ghost" style="padding:0 6px" onclick="delGroup('${gr.id}')">🗑</button>`}</td></tr>`);
       if(col) return;
@@ -867,11 +890,17 @@ function renderProjects(){
       const active=sorted.filter(p=>!isDone(p)), done=sorted.filter(isDone);
       active.forEach((p,idx)=>{ rows.push(projectRow(p,idx,active.length)); if(PROJ_STATION_OPEN[p.id]) rows.push(stationRows(p)); });
       if(done.length){ const dc=isDoneCollapsed('proj',key);
-        rows.push(`<tr class="donehead"><td colspan="8" style="background:#fafbfd;padding:5px 12px"><span onclick="toggleDoneCollapse('proj','${key}','renderProjects')" style="cursor:pointer;user-select:none;color:#7a8699;font-size:12px;font-weight:700">${dc?'▸':'▾'} ✅ 已完成（${done.length}）</span></td></tr>`);
+        rows.push(`<tr class="donehead"><td colspan="8" style="background:#fafbfd;padding:5px 12px 5px 22px"><span onclick="toggleDoneCollapse('proj','${key}','renderProjects')" style="cursor:pointer;user-select:none;color:#7a8699;font-size:12px;font-weight:700">${dc?'▸':'▾'} ✅ 已完成（${done.length}）</span></td></tr>`);
         if(!dc) done.forEach(p=>rows.push(projectRowCompact(p))); }
     };
-    byGroup.forEach(b=>pushGroup(b.gr,b.items,false,b.gr.id));
-    if(orphans.length) pushGroup({id:'',name:'未分類',color:'#b8c2d0'},orphans,true,'__orphan__');
+    // 事業領域大分類標題列 + 其下各廠區
+    tree.forEach(node=>{
+      const pcol=PROJECT_COLLAPSE[node.key];
+      rows.push(`<tr><td colspan="8" style="background:#eef3fa;border-top:2px solid ${node.color};padding:7px 12px"><span onclick="toggleGroupCollapse('${node.key}')" style="cursor:pointer;user-select:none;font-weight:800;font-size:13px;color:${node.color}"><span style="margin-right:6px">${pcol?'▸':'▾'}</span>${esc(node.domain)}（${node.count}）</span></td></tr>`);
+      if(pcol) return;
+      node.groups.forEach(gb=>pushGroup(gb.gr,gb.items,gb.orphan,node.key+'::'+gb.gr.id));
+    });
+    if(!rows.length) rows.push('<tr><td colspan="8" style="color:var(--muted);padding:14px">尚無專案</td></tr>');
     document.getElementById('view').innerHTML=head+`
       <table class="mtable">
         <thead><tr>${sortTh('project','name','專案')}${sortTh('project','customer','客戶')}${sortTh('project','progress','進度','width:150px;')}${sortTh('project','status','狀態')}${sortTh('project','benefit','投入/效益','width:150px;')}<th>PM</th><th>技術模塊</th><th style="width:96px"></th></tr></thead>
@@ -879,12 +908,17 @@ function renderProjects(){
     return;
   }
 
-  document.getElementById('view').innerHTML=head+
-    byGroup.map(b=>`<div style="margin-bottom:20px">${groupHeader(b.gr,b.gr.id)}
-        ${PROJECT_COLLAPSE[b.gr.id]?'':projCardBody(b.items,b.gr.id)}</div>`).join('')+
-    (orphans.length?`<div style="margin-bottom:20px">
-      <div style="margin-bottom:8px"><span onclick="toggleGroupCollapse('__orphan__')" style="cursor:pointer;user-select:none;font-weight:700;color:var(--muted)"><span style="margin-right:6px">${PROJECT_COLLAPSE['__orphan__']?'▸':'▾'}</span>未分類（${orphans.length}）</span><span style="font-size:11px;font-weight:400;color:var(--muted)">　編輯專案可重新指派廠區</span></div>
-      ${PROJECT_COLLAPSE['__orphan__']?'':projCardBody(orphans,'__orphan__')}</div>`:'');
+  // 卡片視圖：事業領域大分類區塊 → 廠區次分類（縮排）
+  const body=tree.map(node=>{
+    const pcol=PROJECT_COLLAPSE[node.key];
+    return `<div style="margin-bottom:22px">
+      <div style="margin-bottom:12px;border-top:2px solid ${node.color};padding-top:9px">
+        <span onclick="toggleGroupCollapse('${node.key}')" style="cursor:pointer;user-select:none;font-weight:800;font-size:15px;color:${node.color}"><span style="margin-right:6px">${pcol?'▸':'▾'}</span>${esc(node.domain)}<span style="font-size:12px;color:#8a94a6;font-weight:600">（${node.count}）</span></span></div>
+      ${pcol?'':node.groups.map(gb=>{ const gkey=node.key+'::'+gb.gr.id; return `<div style="margin:0 0 14px 16px">${groupHeader(gb.gr,gkey,gb.items.length)}
+        ${PROJECT_COLLAPSE[gkey]?'':`<div style="margin-left:16px">${projCardBody(gb.items,gkey)}</div>`}</div>`; }).join('')}
+    </div>`;
+  }).join('')||'<div class="empty">尚無專案</div>';
+  document.getElementById('view').innerHTML=head+body;
 }
 // 卡片視圖：群組內 active 卡片網格 + 已完成收合區（精簡卡片）
 function projCardBody(items,key){
@@ -1445,9 +1479,9 @@ function editProject(id){
   EDIT_STATIONS=(p.stations||[]).map(st=>{ const srm=st.roleMembers||{}; return {id:st.id||uid('st'),name:st.name||'',phase:st.phase||'',progress:+st.progress||0,eta:st.eta||'',benefit:+st.benefit||0,moduleIds:[...(st.moduleIds||[])],ownerIds:[...(st.ownerIds||[])],roles:Array.isArray(st.roles)&&st.roles.length?[...st.roles]:Object.keys(srm),roleMembers:JSON.parse(JSON.stringify(srm))}; });
   openModal(`<h3>${id?'編輯':'新增'}專案</h3>
     <div class="field"><label>專案名稱</label><input id="f_name" value="${esc(p.name)}"></div>
-    <div class="row"><div class="field" style="flex:1"><label>線體群組／廠區</label><select id="f_group" onchange="groupSelectChange(this)">${DATA.groups.map(gr=>`<option value="${gr.id}" ${p.group===gr.id?'selected':''}>${esc(gr.name)}</option>`).join('')}<option value="__new__">＋ 新增廠區…</option></select></div>
-      <div class="field" style="flex:1"><label>技術平台 Pillar</label><select id="f_pillar"><option value="">（未指派）</option>${ROADMAP_DOMAINS.filter(dm=>(DATA.pillars||[]).some(x=>x.domain===dm)).map(dm=>`<optgroup label="${esc(dm)}">${(DATA.pillars||[]).filter(x=>x.domain===dm).map(x=>`<option value="${x.id}" ${p.pillarId===x.id?'selected':''}>${esc(x.name)}</option>`).join('')}</optgroup>`).join('')}</select><div class="hint">決定此專案歸於 Mobility／Display／Vertical 哪一類（於 Roadmap 頁可新增各類的技術平台）</div></div>
-      <div class="field" style="flex:1"><label>客戶</label><input id="f_customer" value="${esc(p.customer)}"></div></div>
+    <div class="row"><div class="field" style="flex:1"><label>線體群組／廠區</label><select id="f_group" onchange="groupSelectChange(this)">${DATA.groups.slice().sort((a,b)=>String(a.name).localeCompare(String(b.name),'zh-Hant')).map(gr=>`<option value="${gr.id}" ${p.group===gr.id?'selected':''}>${esc(gr.name)}</option>`).join('')}<option value="__new__">＋ 新增廠區…</option></select></div>
+      <div class="field" style="flex:1"><label>事業領域</label><select id="f_domain"><option value="">（未指派）</option>${ROADMAP_DOMAINS.map(dm=>`<option value="${dm}" ${projDomain(p)===dm?'selected':''}>${dm}</option>`).join('')}</select><div class="hint">Display／Mobility／Vertical 三大事業領域，決定此專案在清單中的分類</div></div>
+      <div class="field" style="flex:1"><label>客戶</label><select id="f_customer" onchange="customerSelectChange(this)"><option value="" ${!p.customer?'selected':''}>（未指定）</option>${customerOptions(p.customer)}<option value="__new__">＋ 新增客戶…</option></select></div></div>
     <div class="field"><label>目前階段</label><input id="f_phase" value="${esc(p.phase)}"><div class="hint">填寫整個主專案的目前階段／狀態；各子專案（站點）階段請於下方各站個別填寫</div></div>
     <div class="row"><div class="field" style="flex:1"><label>進度 %</label><input id="f_progress" type="number" min="0" max="100" value="${p.progress||0}" oninput="refreshAutoStatus()"><div class="hint" id="f_progressHint" style="display:none">有 AOI 站點時，線進度＝各站平均自動計算</div></div>
       <div class="field" style="flex:1"><label>預計完成日</label><input id="f_eta" type="date" value="${toDateInput(p.eta)}" onchange="refreshAutoStatus()"></div>
@@ -1516,7 +1550,7 @@ function saveProject(pid,exists){
   syncStationsFromDOM();
   const orig=exists?proj(pid):null;
   const stations=EDIT_STATIONS.filter(s=>s.name||s.phase||s.moduleIds.length||s.ownerIds.length||(s.roles||[]).length||+s.benefit).map(s=>({id:s.id||uid('st'),name:s.name,phase:s.phase||'',progress:+s.progress||0,eta:s.eta||'',benefit:+s.benefit||0,moduleIds:[...s.moduleIds],ownerIds:[...s.ownerIds],roles:[...(s.roles||[])],roleMembers:JSON.parse(JSON.stringify(s.roleMembers||{}))}));
-  const o={ id:pid, name:val('f_name'), group:val('f_group'), pillarId:val('f_pillar'), customer:val('f_customer'), phase:val('f_phase'),
+  const o={ id:pid, name:val('f_name'), group:val('f_group'), domain:val('f_domain'), customer:val('f_customer'), phase:val('f_phase'),
     progress:+val('f_progress')||0, eta:fromDateInput(val('f_eta')),
     headcount:0, benefit:+val('f_benefit')||0, gains:val('f_gains'), weight:+val('f_weight')||1, lifecycle:val('f_lifecycle')||'active',
     needs:val('f_needs').split(/[,，]/).map(s=>s.trim()).filter(Boolean), moduleIds:(orig?orig.moduleIds||[]:[]), memberIds:getChecked('f_mems'), roleMembers:(orig?orig.roleMembers||{}:{}), stations };
@@ -1637,6 +1671,16 @@ function groupSelectChange(sel){
     const v=(prompt('輸入新廠區名稱（例：TW M01）')||'').trim();
     if(v){ const o={id:uid('g'),name:v,color:pickColor(DATA.groups.length)}; DATA.groups.push(o); save();
       const opt=document.createElement('option'); opt.value=o.id; opt.textContent=v; sel.insertBefore(opt, sel.lastElementChild); sel.value=o.id; }
+    else sel.selectedIndex=0;
+  }
+}
+// 客戶下拉：自現有專案蒐集不重複客戶名稱，依名稱排序；含目前值
+function projectCustomers(){ return [...new Set((DATA.projects||[]).map(p=>(p.customer||'').trim()).filter(Boolean))]; }
+function customerOptions(cur){ const list=projectCustomers(); if(cur&&!list.includes(cur)) list.push(cur); list.sort((a,b)=>String(a).localeCompare(String(b),'zh-Hant')); return list.map(c=>`<option value="${esc(c)}" ${cur===c?'selected':''}>${esc(c)}</option>`).join(''); }
+function customerSelectChange(sel){
+  if(sel.value==='__new__'){
+    const v=(prompt('輸入新客戶名稱（例：BMW）')||'').trim();
+    if(v){ let opt=[...sel.options].find(o=>o.value===v); if(!opt){ opt=document.createElement('option'); opt.value=v; opt.textContent=v; sel.insertBefore(opt, sel.lastElementChild); } sel.value=v; }
     else sel.selectedIndex=0;
   }
 }
