@@ -842,7 +842,7 @@ function projDomainTree(){
   const groupIds=DATA.groups.map(x=>x.id);
   const buildGroups=(projs)=>{
     const arr=[];
-    DATA.groups.forEach(gr=>{ const items=projs.filter(p=>p.group===gr.id); if(items.length) arr.push({gr,items,orphan:false}); });
+    DATA.groups.slice().sort((a,b)=>String(a.name).localeCompare(String(b.name),'zh-Hant')).forEach(gr=>{ const items=projs.filter(p=>p.group===gr.id); if(items.length) arr.push({gr,items,orphan:false}); });
     const orphans=projs.filter(p=>!groupIds.includes(p.group));
     if(orphans.length) arr.push({gr:{id:'',name:'未分類廠區',color:'#b8c2d0'},items:orphans,orphan:true});
     return arr;
