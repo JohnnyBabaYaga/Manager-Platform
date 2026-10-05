@@ -83,6 +83,49 @@
   /* generic card */
   .card{background:var(--glass-strong);-webkit-backdrop-filter:var(--glass-blur);backdrop-filter:var(--glass-blur);border:1px solid var(--glass-line);border-radius:var(--r-md);padding:16px;box-shadow:var(--shadow-1);transition:transform .18s,box-shadow .2s;}
   .card:hover{box-shadow:var(--shadow-2);}
+  /* 總覽：效益、人力與離線專案地圖 */
+  .overview-hero{display:grid;grid-template-columns:minmax(250px,.9fr) minmax(340px,1.55fr) minmax(320px,1.15fr);gap:16px;align-items:stretch;}
+  .overview-hero>.card,.overview-hero>.kpi{min-width:0;}
+  .project-map-card{display:flex;flex-direction:column;gap:12px;}
+  .project-map-head{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap;}
+  .project-map-head h3{font-size:14px;font-weight:800;color:var(--text);}
+  .project-map-meta,.project-map-total{font-size:11px;color:var(--muted);}
+  .project-map-total{margin-left:auto;white-space:nowrap;}
+  .project-map-layout{flex:1;}
+  .project-map-canvas{background:#f0f5fa;border-radius:12px;overflow:hidden;}
+  .project-map-svg{display:block;width:100%;height:auto;}
+  .project-map-land{fill:#d6e0e8;stroke:#f0f5fa;stroke-width:.6;stroke-linejoin:round;}
+  .project-map-pin{cursor:pointer;outline:none;}
+  .project-map-pin .pin-shape{stroke:#fff;stroke-width:1.8;filter:drop-shadow(0 2px 2px rgba(28,43,69,.2));transition:filter .18s;}
+  .project-map-pin:hover .pin-shape,.project-map-pin:focus-visible .pin-shape{filter:drop-shadow(0 0 5px currentColor);stroke-width:3;}
+  .project-map-pin text{font-family:inherit;font-weight:800;pointer-events:none;}
+  .project-map-label{paint-order:stroke;stroke:#f0f5fa;stroke-width:3px;stroke-linejoin:round;}
+  .project-map-list{display:flex;flex-direction:column;gap:3px;margin-top:10px;}
+  .project-map-row{display:flex;align-items:center;gap:10px;width:100%;min-height:30px;padding:5px 6px;border:0;border-radius:8px;background:transparent;cursor:pointer;font:inherit;text-align:left;transition:background .18s;}
+  .project-map-row:hover{background:rgba(47,111,208,.07);}
+  .project-map-row:focus-visible{outline:2px solid var(--blue2);outline-offset:1px;}
+  .project-map-swatch{width:4px;height:17px;border-radius:3px;background:var(--map-color);flex:0 0 auto;}
+  .project-map-name{font-size:12px;font-weight:800;color:var(--map-color);white-space:nowrap;}
+  .project-map-site{font-size:10px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;}
+  .project-map-count{font-size:13px;font-weight:800;color:var(--blue);margin-left:auto;white-space:nowrap;font-variant-numeric:tabular-nums;}
+  .project-map-done{font-size:11px;font-weight:600;color:var(--muted);margin-left:5px;}
+  .project-map-empty{color:var(--muted);font-size:12px;padding:12px 4px;text-align:center;}
+  .project-map-tools{display:flex;align-items:center;gap:8px;margin-top:auto;}
+  .project-map-tools select{flex:1;min-width:0;padding:6px 9px;border:1px solid var(--line);border-radius:9px;background:rgba(255,255,255,.7);font:inherit;font-size:11px;color:var(--muted);}
+  .project-map-note{font-size:10px;color:var(--muted);line-height:1.6;}
+  .project-map-project{display:block;width:100%;text-align:left;font:inherit;cursor:pointer;margin-bottom:8px;}
+  .project-map-project:focus-visible{outline:2px solid var(--blue2);outline-offset:2px;}
+  @media(max-width:1100px){
+    .overview-hero{grid-template-columns:minmax(250px,1fr) minmax(340px,1.7fr);}
+    .project-map-card{grid-column:1 / -1;}
+    .project-map-layout{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:18px;align-items:center;}
+    .project-map-list{margin-top:0;}
+  }
+  @media(max-width:720px){
+    .overview-hero{grid-template-columns:minmax(0,1fr);}
+    .project-map-layout{display:block;}
+    .project-map-list{margin-top:10px;}
+  }
   .pcard{border-left:5px solid var(--xm);}
   .pcard.g-MX{border-left-color:var(--mx);}
   .pcard.g-GM{border-left-color:var(--gm);}
@@ -688,6 +731,117 @@ function roadmapDetail(id){
       <button class="btn ghost" onclick="closeModal()">關閉</button><button class="btn" onclick="editRoadmapItem('${it.id}')">編輯</button></div>`);
 }
 
+/* ---------- 專案地圖：依廠區位置，不依客戶國籍；未確認的位置不猜測 ---------- */
+// mapRegion 是選用欄位（project 優先於 group）：空白=自動、unknown=明確未設定。
+// 座標為地區代表點，並非精確廠址；代碼對照沿用專案地圖的 S17/S19、A02、E31、AMC、E21。
+const PROJECT_MAP_REGIONS = [
+  {id:'xiamen',name:'廈門',color:'#2795d2',lat:24.48,lon:118.09,dx:-19,dy:3,codes:['S17','S19'],match:/(廈門|厦门|xiamen)|(^|[^a-z0-9])(XM|S17|S19)(?=$|[^a-z0-9])/i},
+  {id:'mexico',name:'墨西哥',color:'#d88615',lat:23.63,lon:-102.55,dx:0,dy:0,codes:['A02'],match:/(墨西哥|mexico|méxico)|(^|[^a-z0-9])(MX|A02)(?=$|[^a-z0-9])/i},
+  {id:'bulgaria',name:'保加利亞',color:'#d94a8c',lat:42.70,lon:23.32,dx:18,dy:10,codes:['E31'],match:/(保加利亞|保加利亚|bulgaria)|(^|[^a-z0-9])(BG|E31)(?=$|[^a-z0-9])/i},
+  {id:'taiwan',name:'台灣',color:'#1b9f8f',lat:23.70,lon:121.00,dx:20,dy:3,codes:['AMC'],match:/(台灣|臺灣|台湾|taiwan)|(^|[^a-z0-9])(TW|AMC)(?=$|[^a-z0-9])/i},
+  {id:'germany',name:'德國',color:'#8059c9',lat:51.17,lon:10.45,dx:-7,dy:-9,codes:['E21'],match:/(德國|德国|germany)|(^|[^a-z0-9])(GM|DE|E21)(?=$|[^a-z0-9])/i}
+];
+// Natural Earth ne_110m_land（public domain, https://www.naturalearthdata.com/about/terms-of-use/）。
+// 內嵌簡化陸地輪廓：經度 -30..330、緯度 -58..85，與 projectMapPoint() 共用投影；不載入線上地圖。
+const PROJECT_MAP_LAND = 'M399.1,194.8L402.3,195.8L390.9,193.5ZM224.5,178.3L228.0,178.4L227.5,181.4ZM257.4,178.5L257.4,182.2L249.8,185.2ZM259.3,172.5L263.9,174.4L260.0,179.5L256.9,170.5ZM111.2,144.1L105.7,159.2L103.9,148.9L110.2,142.1ZM222.3,144.3L233.7,159.8L230.0,174.1L218.9,174.8L214.3,171.4L215.5,168.4L213.3,170.9L207.8,166.6L188.4,170.0L187.4,154.4L195.4,151.8L201.1,144.9L205.8,145.8L209.0,141.0L213.9,141.9L212.8,145.9L218.4,149.3L221.1,140.4ZM180.8,135.5L189.2,137.5L176.9,135.6ZM211.1,128.4L212.7,131.2L216.1,129.1L223.6,131.9L230.8,140.3L223.8,136.6L215.3,137.6L215.6,133.8L206.8,128.2ZM200.6,125.2L194.6,126.7L198.3,127.8L196.1,129.4L198.1,133.7L195.5,130.3L193.6,133.8L194.4,126.3ZM177.5,134.4L165.0,120.1L175.1,126.9ZM191.8,124.7L189.8,132.0L182.7,130.7L181.3,125.3L190.4,118.3L193.4,120.2ZM201.9,116.4L200.7,120.0L196.6,117.9ZM195.9,103.7L199.2,111.2L194.4,108.1ZM393.4,102.0L398.4,103.6L391.1,103.9ZM384.9,98.3L391.3,101.8L378.6,99.4ZM219.3,80.2L213.1,84.9L207.4,84.3L206.5,87.4L205.5,85.1L213.0,82.3L219.7,74.9ZM222.8,71.4L224.7,72.5L218.1,74.7L220.5,69.7ZM412.9,63.2L416.6,68.3L409.2,67.1ZM222.4,63.1L220.6,69.1L221.3,58.6ZM43.6,61.2L39.8,61.8L40.1,59.2L43.7,57.5ZM48.1,53.2L53.4,62.4L45.4,64.1L48.2,59.0L44.4,55.5ZM378.4,44.3L384.4,46.8L376.0,47.0ZM34.4,43.3L29.5,47.1L22.7,44.4ZM271.6,43.2L277.7,43.9L265.7,45.2L265.7,40.2ZM372.0,39.5L375.8,42.4L381.4,39.3L383.1,41.9L368.9,48.9L367.1,52.8L369.9,55.1L381.9,57.6L384.7,62.5L384.8,58.2L388.7,55.8L386.8,48.5L391.9,48.4L399.2,53.7L402.9,51.0L413.5,61.4L400.7,63.8L395.1,68.1L402.3,65.0L403.0,68.8L408.6,69.2L402.0,72.2L403.1,70.0L399.8,70.2L389.4,80.1L388.9,77.7L389.6,82.2L383.0,87.4L384.1,95.3L379.7,89.1L364.8,91.4L365.2,102.7L376.2,99.9L373.9,107.0L380.5,107.8L382.8,115.9L388.3,116.1L394.4,111.3L394.4,115.6L396.5,111.7L406.1,113.5L418.7,121.7L419.8,127.1L432.1,130.6L438.4,136.2L431.0,154.6L423.0,158.3L415.7,170.3L410.2,169.7L412.2,173.4L402.2,178.7L404.2,180.6L399.7,184.3L401.2,187.6L395.2,194.8L390.6,192.8L389.7,185.7L393.2,180.3L391.3,181.4L396.2,151.9L383.1,134.7L388.0,122.1L386.7,116.5L383.5,117.9L375.7,110.3L356.6,104.0L343.2,87.0L349.6,97.8L346.3,95.9L331.8,76.2L333.6,65.3L320.3,53.8L304.8,50.4L299.3,52.5L300.6,49.9L283.8,58.5L293.0,52.8L282.2,49.6L288.5,45.4L279.8,44.3L287.4,43.8L281.4,40.9L293.5,37.2L350.2,42.2L365.4,42.3L366.5,36.5ZM343.9,35.0L353.0,35.0L359.5,39.4L344.9,40.7L340.2,38.9L346.0,38.4L337.7,36.9ZM376.8,34.9L393.8,36.9L406.1,42.8L403.7,45.2L398.8,43.6L402.8,47.2L397.9,46.8L401.0,49.0L387.3,46.1L393.0,41.7L372.8,37.3ZM360.4,34.0L364.7,36.8L357.8,35.7ZM368.9,35.4L365.5,34.6L372.1,34.0ZM336.5,37.1L330.0,36.5L331.2,33.5L342.3,34.5ZM362.6,30.4L363.0,32.6L357.8,31.9ZM351.0,31.1L354.0,32.0L339.7,32.3ZM120.1,38.0L112.8,36.3L117.8,32.5L133.5,30.6L121.2,33.5L117.6,35.9ZM367.1,29.9L384.8,32.7L364.2,30.4ZM178.8,30.1L187.4,31.5L181.7,33.6L202.6,34.4L207.8,37.9L218.7,35.3L253.3,40.5L260.6,39.0L265.7,40.2L265.7,45.2L262.6,45.7L264.7,48.6L246.1,51.6L244.4,57.9L238.1,62.8L237.0,55.5L247.2,48.3L236.0,52.5L220.7,52.7L212.3,58.1L219.8,61.2L216.0,68.7L203.3,76.9L205.1,82.8L202.0,83.7L200.7,77.2L195.6,78.0L196.3,75.5L192.0,77.6L197.1,79.8L193.3,83.1L196.3,91.5L189.4,98.3L177.5,102.1L181.7,110.1L176.7,116.2L170.7,110.1L169.6,115.4L175.6,125.4L168.6,117.2L167.2,105.7L163.6,106.8L160.4,98.3L147.2,107.0L143.9,117.0L138.0,100.1L130.6,95.0L119.9,94.6L108.7,89.3L113.2,96.8L118.7,93.8L122.8,98.9L117.4,105.3L103.4,111.1L93.2,89.9L92.0,92.2L90.2,89.4L102.5,112.2L112.4,113.6L98.3,132.9L100.1,145.5L93.0,151.9L94.0,156.8L90.0,163.2L82.3,169.7L73.5,170.0L65.7,149.7L67.9,140.5L62.1,128.4L62.8,122.3L56.8,119.1L41.0,120.9L31.9,111.7L31.5,99.4L44.6,82.0L63.0,80.0L64.0,84.5L74.4,88.9L77.3,85.7L91.8,88.0L94.7,80.9L84.5,80.8L82.8,77.3L101.2,74.2L95.3,70.0L98.2,67.5L91.9,71.2L88.2,68.4L85.9,75.3L78.6,76.3L78.4,81.2L74.9,74.5L67.3,69.4L73.6,76.4L70.8,79.2L62.2,71.1L55.4,72.8L49.1,80.8L41.1,80.6L40.5,72.8L50.0,71.6L46.2,65.7L61.3,59.6L61.8,55.1L64.2,54.3L64.7,59.0L75.0,58.5L80.3,55.2L79.4,52.5L86.3,51.4L77.0,50.6L81.9,45.0L78.0,44.3L72.9,48.0L70.5,56.4L67.1,57.3L64.0,52.1L58.4,53.2L57.6,49.0L80.8,37.6L100.5,42.1L91.1,43.1L95.7,46.6L103.9,43.8L103.3,40.7L106.8,43.1L123.7,39.1L133.1,41.3L131.0,37.6L138.0,35.4L137.8,43.7L140.9,41.7L140.4,35.3L148.6,36.7L147.4,34.3L155.3,32.4ZM110.1,75.0L110.2,79.7L115.7,80.5L114.3,76.6L116.7,75.4L111.5,70.8L114.7,68.0L107.2,70.8ZM73.4,26.7L77.3,27.6L70.6,30.4L64.1,26.7ZM81.9,25.8L84.3,26.2L72.3,25.9ZM170.5,27.7L160.1,25.9L165.7,24.7ZM376.2,26.7L371.7,28.5L364.7,26.1ZM398.2,22.4L406.1,23.0L388.2,27.1L390.0,28.1L383.9,31.1L373.3,30.7L378.6,29.4L375.1,28.3L378.5,27.1L376.3,26.0L382.4,25.7L370.8,23.9ZM19.4,21.9L26.9,22.9L16.0,23.7L37.2,24.7L27.8,26.1L30.6,26.1L29.7,30.1L25.9,30.5L28.6,33.5L22.2,35.9L25.8,38.0L21.3,37.1L25.1,38.7L16.0,41.1L16.0,21.8ZM444.0,23.5L441.7,23.5L444.0,23.7L444.0,41.1L432.3,44.6L428.1,51.3L418.3,46.9L415.5,42.4L419.2,39.0L414.7,39.4L418.6,38.2L413.3,36.8L410.0,31.9L392.5,28.8L408.0,23.7Z';
+let PROJECT_MAP_DOMAIN = '';
+function projectMapMatches(text){ return PROJECT_MAP_REGIONS.filter(r=>r.match.test(String(text||''))); }
+function projectMapRegion(p){
+  const find=id=>PROJECT_MAP_REGIONS.find(r=>r.id===id)||null;
+  if(p.mapRegion) return find(p.mapRegion); // unknown 或無效 id 均不擅自回退
+  const gr=(DATA.groups||[]).find(x=>x.id===p.group);
+  if(gr&&gr.mapRegion) return find(gr.mapRegion);
+  const text=[p.site,p.factory,p.location,p.name].filter(v=>typeof v==='string').join(' ');
+  const matches=projectMapMatches(text);
+  if(matches.length) return matches.length===1?matches[0]:null; // 多地區／尚未定案，不重複計數
+  const groupMatches=projectMapMatches(gr?gr.id+' '+gr.name:p.group);
+  return groupMatches.length===1?groupMatches[0]:null;
+}
+function projectMapProjects(){
+  return (DATA.projects||[]).filter(p=>!PROJECT_MAP_DOMAIN || (PROJECT_MAP_DOMAIN==='__none__'?!projDomain(p):projDomain(p)===PROJECT_MAP_DOMAIN));
+}
+function projectMapStats(){
+  const projects=projectMapProjects();
+  const rows=PROJECT_MAP_REGIONS.map(r=>Object.assign({},r,{projects:[],active:0,done:0}));
+  const unknown={id:'unknown',name:'未設定',color:'#98a6b8',codes:[],projects:[],active:0,done:0};
+  projects.forEach(p=>{ const r=projectMapRegion(p); const row=r?rows.find(x=>x.id===r.id):unknown;
+    row.projects.push(p); if(isDone(p)) row.done++; else row.active++; });
+  return {projects,unknown,active:projects.filter(p=>!isDone(p)).length,done:projects.filter(isDone).length,
+    rows:rows.filter(r=>r.projects.length).sort((a,b)=>b.active-a.active || b.done-a.done || a.name.localeCompare(b.name,'zh-Hant'))};
+}
+function projectMapPoint(r){
+  const lon=((r.lon+30)%360+360)%360;
+  return {x:16+lon/360*428,y:20+(85-r.lat)/143*180};
+}
+function projectMapSiteLabel(row){
+  const text=row.projects.map(p=>p.name+' '+p.group+' '+g(p.group).name).join(' ');
+  const codes=row.codes.filter(c=>new RegExp('(^|[^a-z0-9])'+c+'(?=$|[^a-z0-9])','i').test(text));
+  return codes.length?codes.join(' · '):[...new Set(row.projects.map(p=>g(p.group).name).filter(Boolean))].join(' · ');
+}
+function projectMapPin(row){
+  const pos=projectMapPoint(row), x=pos.x+row.dx, y=pos.y+row.dy;
+  const label=`${row.name}：${row.active} 案進行中${row.done?'，'+row.done+' 案已完成':''}，點擊查看專案`;
+  return `<g class="project-map-pin" role="button" tabindex="0" aria-label="${esc(label)}" style="color:${row.color}" data-map-region="${row.id}" onclick="showProjectMapRegion(this.dataset.mapRegion)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showProjectMapRegion(this.dataset.mapRegion)}">
+    <title>${esc(label)}</title><path d="M${pos.x},${pos.y}L${x},${y}" fill="none" stroke="${row.color}" stroke-dasharray="2 2"/><circle cx="${pos.x}" cy="${pos.y}" r="2.5" fill="${row.color}"/>
+    <g transform="translate(${x} ${y})"><path class="pin-shape" d="M0,0C-5,-9 -15,-19 -15,-29A15,15 0 1 1 15,-29C15,-19 5,-9 0,0Z" fill="${row.color}" fill-opacity="${row.active?1:.65}"/>
+      <text y="-27" text-anchor="middle" dominant-baseline="middle" fill="#fff" font-size="14">${row.active}</text>
+      <text class="project-map-label" y="17" text-anchor="middle" fill="${row.color}" font-size="12">${row.name}</text></g></g>`;
+}
+function projectMapRow(row){
+  const sites=row.id==='unknown'?'位置未確認':projectMapSiteLabel(row);
+  return `<button type="button" class="project-map-row" style="--map-color:${row.color}" data-map-region="${row.id}" onclick="showProjectMapRegion(this.dataset.mapRegion)" aria-label="${row.name}：${row.active} 案進行中，${row.done} 案已完成">
+    <span class="project-map-swatch" aria-hidden="true"></span><span class="project-map-name">${row.name}</span><span class="project-map-site" title="${esc(sites)}">${esc(sites)}</span>
+    <span class="project-map-count">${row.active}${row.done?`<span class="project-map-done" title="${row.done} 案已完成（轉量產／Phase-out）">+${row.done}</span>`:''}</span></button>`;
+}
+function setProjectMapDomain(d){ PROJECT_MAP_DOMAIN=d; renderProjectMap(); }
+function renderProjectMap(){
+  const el=document.getElementById('projectMap'); if(!el) return;
+  const stats=projectMapStats();
+  const domains=[...new Set([...ROADMAP_DOMAINS,...(DATA.projects||[]).map(projDomain).filter(Boolean)])];
+  el.innerHTML=`<div class="project-map-head"><h3>專案地圖</h3><span class="project-map-meta">${stats.rows.length} 個地區</span><span class="project-map-total">運作中 <b>${stats.active}</b> 案</span></div>
+    <div class="project-map-layout"><div class="project-map-canvas"><svg class="project-map-svg" viewBox="0 0 460 220" role="group" aria-label="專案地區分布世界地圖">
+      <path class="project-map-land" d="${PROJECT_MAP_LAND}" aria-hidden="true"/>${stats.rows.map(projectMapPin).join('')}</svg></div>
+      <div class="project-map-list">${stats.rows.map(projectMapRow).join('')}${stats.unknown.projects.length?projectMapRow(stats.unknown):''}
+        ${stats.projects.length?'':'<div class="project-map-empty">目前範圍尚無專案</div>'}</div></div>
+    <div class="project-map-tools"><select aria-label="地圖事業領域篩選" onchange="setProjectMapDomain(this.value)"><option value="" ${!PROJECT_MAP_DOMAIN?'selected':''}>全部領域</option>
+      ${domains.map(d=>`<option value="${esc(d)}" ${PROJECT_MAP_DOMAIN===d?'selected':''}>${esc(d)}</option>`).join('')}<option value="__none__" ${PROJECT_MAP_DOMAIN==='__none__'?'selected':''}>未指派領域</option></select>
+      <button class="btn sm ghost" type="button" onclick="editProjectMapLocations()">位置設定</button></div>
+    <div class="project-map-note">數字＝進行中；+N＝已完成（轉量產／Phase-out）。<br>廠區位置示意 · 點地區看專案 · 未確認位置不標點</div>`;
+}
+function showProjectMapRegion(id){
+  const stats=projectMapStats(), row=id==='unknown'?stats.unknown:stats.rows.find(r=>r.id===id); if(!row) return;
+  const cards=done=>row.projects.filter(p=>isDone(p)===done).map(p=>`<button type="button" class="card project-map-project" data-project-id="${esc(p.id)}" onclick="closeModal();openProjectFromMap(this.dataset.projectId)">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><b>${esc(p.name)}</b>${done?lifecycleBadge(p.lifecycle):projStatusBadge(p)}</div>
+    <div style="font-size:12px;color:var(--muted);margin-top:7px">${esc(g(p.group).name)} · 進度 ${projProgress(p)}% · ${esc(projPhase(p)||'尚未填寫階段')}</div></button>`).join('');
+  openModal(`<h3>${row.name} · 專案清單</h3><div class="hint" style="margin-bottom:14px">${row.active} 案進行中 · ${row.done} 案已完成${PROJECT_MAP_DOMAIN?' · '+esc(PROJECT_MAP_DOMAIN==='__none__'?'未指派領域':PROJECT_MAP_DOMAIN):''} · 點專案前往明細</div>
+    ${id==='unknown'?'<div class="note">無法確認廠區位置，或名稱包含多個地區。請在「位置設定」指定廠區位置，或在個別專案編輯中選擇「地圖位置」。</div>':''}
+    ${row.active?`<div class="section-title" style="font-size:13px">進行中</div>${cards(false)}`:''}
+    ${row.done?`<div class="section-title" style="font-size:13px;margin-top:16px">已完成</div>${cards(true)}`:''}
+    <div class="modal-foot"><button class="btn ghost" onclick="closeModal()">關閉</button></div>`);
+}
+function openProjectFromMap(id){
+  const p=proj(id); if(!p) return;
+  const dom=projDomain(p), key='dom:'+(ROADMAP_DOMAINS.includes(dom)?dom:'__none__');
+  const groupId=DATA.groups.some(gr=>gr.id===p.group)?p.group:'';
+  PROJECT_COLLAPSE[key]=false; PROJECT_COLLAPSE[key+'::'+groupId]=false;
+  if(isDone(p)) DONE_COLLAPSE[doneKey('proj',key+'::'+groupId)]=false;
+  gotoProject(id);
+}
+function projectMapOptions(selected){
+  return `<option value="" ${!selected?'selected':''}>自動依廠區／專案代碼對應</option>${PROJECT_MAP_REGIONS.map(r=>`<option value="${r.id}" ${selected===r.id?'selected':''}>${r.name}</option>`).join('')}<option value="unknown" ${selected==='unknown'?'selected':''}>未設定／位置未確認</option>`;
+}
+function editProjectMapLocations(){
+  openModal(`<h3>專案地圖 · 廠區位置設定</h3><div class="hint" style="margin-bottom:14px">自動對應：S17／S19 → 廈門、A02 → 墨西哥、E31 → 保加利亞、AMC → 台灣、E21 → 德國。<br>個別專案的「地圖位置」優先於此設定；不以客戶國籍判定廠址。</div>
+    ${DATA.groups.map((gr,i)=>`<div class="field"><label>${esc(gr.name)}</label><select data-map-group-index="${i}">${projectMapOptions(gr.mapRegion||'')}</select></div>`).join('')||'<div class="empty">尚無廠區，可在專案編輯中指定個別案件位置。</div>'}
+    <div class="modal-foot"><button class="btn ghost" onclick="closeModal()">取消</button><button class="btn" onclick="saveProjectMapLocations()">儲存</button></div>`);
+}
+function saveProjectMapLocations(){
+  let changed=false;
+  document.querySelectorAll('select[data-map-group-index]').forEach(el=>{ const gr=DATA.groups[+el.dataset.mapGroupIndex];
+    if(gr && (gr.mapRegion||'')!==el.value){ gr.mapRegion=el.value; changed=true; } });
+  if(changed) save(); closeModal(); render();
+}
+
 /* ============================================================ OVERVIEW ============================================================ */
 function renderOverview(){
   // project completion by group
@@ -705,17 +859,18 @@ function renderOverview(){
 
   document.getElementById('view').innerHTML=`
     <div class="section-title">人力投資效益 <span class="count">產出效益 ÷ 投入人數（單位：萬元/年）</span></div>
-    <div class="row">
-      <div class="kpi" style="background:linear-gradient(135deg,#16324f,#1f4e96);min-width:300px;flex:1;align-items:stretch;text-align:left">
+    <div class="overview-hero">
+      <div class="kpi" style="background:linear-gradient(135deg,#16324f,#1f4e96);align-items:stretch;text-align:left">
         <div class="label">人均產出效益</div>
         <div class="pct">${eff.perHead}<span style="font-size:15px;font-weight:600"> 萬元/年·人</span></div>
         <div style="font-size:12px;opacity:.85;margin-top:2px">總效益 ${eff.benefit} 萬元/年 ÷ 投入 ${Math.round(eff.heads*10)/10} 人</div>
         <div style="border-top:1px solid rgba(255,255,255,.18);margin:12px 0 10px"></div>
         <div style="font-size:12px;font-weight:700;opacity:.9;margin-bottom:8px">分維度人均效益</div>
         <div id="effPanel">${effPanelInner()}</div></div>
-      <div class="card" style="flex:2;min-width:340px">
+      <div class="card">
         <div style="font-weight:700;color:var(--blue);margin-bottom:4px">效益 × 人力 分布（點泡泡可跳到該專案）</div>
         ${bubbleChart()}</div>
+      <div class="card project-map-card" id="projectMap" aria-label="專案地圖"></div>
     </div>
 
     <div class="section-title" style="margin-top:26px">專案線體完成度</div>
@@ -743,6 +898,7 @@ function renderOverview(){
         : '<div class="card" style="color:var(--green)">✓ 目前沒有成員超載</div>'}
     </div>`;
   renderOvChart();
+  renderProjectMap();
 }
 
 /* ---------- 進度總覽圖：可切換 專案/模塊/人員，並依分組篩選 ---------- */
@@ -932,7 +1088,7 @@ function projCardBody(items,key){
   return html;
 }
 function projectCardCompact(p){
-  return `<div class="card" style="border-left:4px solid ${g(p.group).color};padding:8px 12px;opacity:.78;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+  return `<div class="card" id="proj-${esc(p.id)}" style="border-left:4px solid ${g(p.group).color};padding:8px 12px;opacity:.78;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
     <span style="font-weight:700;font-size:13px;flex:1;min-width:120px">${esc(p.name)}</span>
     ${lifecycleBadge(p.lifecycle)}
     <span style="font-size:12px;white-space:nowrap"><b>${projProgress(p)}%</b></span>
@@ -1482,6 +1638,7 @@ function editProject(id){
     <div class="row"><div class="field" style="flex:1"><label>線體群組／廠區</label><select id="f_group" onchange="groupSelectChange(this)">${DATA.groups.slice().sort((a,b)=>String(a.name).localeCompare(String(b.name),'zh-Hant')).map(gr=>`<option value="${gr.id}" ${p.group===gr.id?'selected':''}>${esc(gr.name)}</option>`).join('')}<option value="__new__">＋ 新增廠區…</option></select></div>
       <div class="field" style="flex:1"><label>事業領域</label><select id="f_domain"><option value="">（未指派）</option>${ROADMAP_DOMAINS.map(dm=>`<option value="${dm}" ${projDomain(p)===dm?'selected':''}>${dm}</option>`).join('')}</select><div class="hint">Display／Mobility／Vertical 三大事業領域，決定此專案在清單中的分類</div></div>
       <div class="field" style="flex:1"><label>客戶</label><select id="f_customer" onchange="customerSelectChange(this)"><option value="" ${!p.customer?'selected':''}>（未指定）</option>${customerOptions(p.customer)}<option value="__new__">＋ 新增客戶…</option></select></div></div>
+    <div class="field"><label>地圖位置</label><select id="f_mapRegion">${projectMapOptions(p.mapRegion||'')}</select><div class="hint">預設依廠區設定／明確代碼對應；跨廠區或位置尚未確定時，可個別指定。不是客戶國籍。</div></div>
     <div class="field"><label>目前階段</label><input id="f_phase" value="${esc(p.phase)}"><div class="hint">填寫整個主專案的目前階段／狀態；各子專案（站點）階段請於下方各站個別填寫</div></div>
     <div class="row"><div class="field" style="flex:1"><label>進度 %</label><input id="f_progress" type="number" min="0" max="100" value="${p.progress||0}" oninput="refreshAutoStatus()"><div class="hint" id="f_progressHint" style="display:none">有 AOI 站點時，線進度＝各站平均自動計算</div></div>
       <div class="field" style="flex:1"><label>預計完成日</label><input id="f_eta" type="date" value="${toDateInput(p.eta)}" onchange="refreshAutoStatus()"></div>
@@ -1550,10 +1707,10 @@ function saveProject(pid,exists){
   syncStationsFromDOM();
   const orig=exists?proj(pid):null;
   const stations=EDIT_STATIONS.filter(s=>s.name||s.phase||s.moduleIds.length||s.ownerIds.length||(s.roles||[]).length||+s.benefit).map(s=>({id:s.id||uid('st'),name:s.name,phase:s.phase||'',progress:+s.progress||0,eta:s.eta||'',benefit:+s.benefit||0,moduleIds:[...s.moduleIds],ownerIds:[...s.ownerIds],roles:[...(s.roles||[])],roleMembers:JSON.parse(JSON.stringify(s.roleMembers||{}))}));
-  const o={ id:pid, name:val('f_name'), group:val('f_group'), domain:val('f_domain'), customer:val('f_customer'), phase:val('f_phase'),
+  const o=Object.assign({},orig||{}, { id:pid, name:val('f_name'), group:val('f_group'), mapRegion:val('f_mapRegion'), domain:val('f_domain'), customer:val('f_customer'), phase:val('f_phase'),
     progress:+val('f_progress')||0, eta:fromDateInput(val('f_eta')),
     headcount:0, benefit:+val('f_benefit')||0, gains:val('f_gains'), weight:+val('f_weight')||1, lifecycle:val('f_lifecycle')||'active',
-    needs:val('f_needs').split(/[,，]/).map(s=>s.trim()).filter(Boolean), moduleIds:(orig?orig.moduleIds||[]:[]), memberIds:getChecked('f_mems'), roleMembers:(orig?orig.roleMembers||{}:{}), stations };
+    needs:val('f_needs').split(/[,，]/).map(s=>s.trim()).filter(Boolean), moduleIds:(orig?orig.moduleIds||[]:[]), memberIds:getChecked('f_mems'), roleMembers:(orig?orig.roleMembers||{}:{}), stations });
   if(stations.length){ o.progress=projProgress(o); o.benefit=projBenefit(o); }
   o.status=autoStatus({progress:projProgress(o),eta:o.eta}).label; // 自動判定後存入，供匯出/相容
   if(!o.name){ alert('請輸入專案名稱'); return; }
@@ -1565,10 +1722,12 @@ function editGroup(id){
   openModal(`<h3>${id?'編輯':'新增'}廠區／線體群組</h3>
     <div class="field"><label>名稱</label><input id="f_gname" value="${esc(gr.name)}" placeholder="例：TW M01"></div>
     <div class="field"><label>代表色</label><input id="f_gcolor" type="color" value="${gr.color||'#5b8def'}" style="width:64px;height:38px;padding:2px"></div>
+    <div class="field"><label>地圖位置</label><select id="f_gmapRegion">${projectMapOptions(gr.mapRegion||'')}</select><div class="hint">套用到此廠區的專案；個別專案可另外指定位置。</div></div>
     <div class="modal-foot"><button class="btn ghost" onclick="closeModal()">取消</button><button class="btn" onclick="saveGroup('${gr.id}',${!!id})">儲存</button></div>`);
 }
 function saveGroup(gid,exists){
-  const o={ id:gid, name:val('f_gname'), color:val('f_gcolor')||'#5b8def' };
+  const orig=exists?DATA.groups.find(x=>x.id===gid):null;
+  const o=Object.assign({},orig||{}, { id:gid, name:val('f_gname'), color:val('f_gcolor')||'#5b8def', mapRegion:val('f_gmapRegion') });
   if(!o.name){ alert('請輸入廠區名稱'); return; }
   if(exists){ const i=DATA.groups.findIndex(x=>x.id===gid); DATA.groups[i]=o; } else DATA.groups.push(o);
   save(); closeModal(); render();
