@@ -764,7 +764,7 @@ function bubbleCluster(col,W,H){
       const x=Math.max(1,Math.min(W-w-1,n.x-w/2)), y=cy-h/2;
       if(y<0||y+h>H) continue;
       if(boxes.some(b=>x<b.x+b.w&&x+w>b.x&&y<b.y+b.h&&y+h>b.y)) continue;
-      boxes.push({x,y,w,h}); labels.push(`<text x="${x+w/2}" y="${y+h-2.5}" text-anchor="middle" font-size="10" font-weight="700" fill="#223" stroke="#fff" stroke-width="3" paint-order="stroke" style="pointer-events:none">${esc(nm)}</text>`); break;
+      boxes.push({x,y,w,h}); labels.push(`<text x="${x+w/2}" y="${y+h-2.5}" text-anchor="middle" font-size="10" font-weight="700" fill="#223" stroke="#fff" stroke-opacity=".55" stroke-width="2" paint-order="stroke" style="pointer-events:none">${esc(nm)}</text>`); break;
     }
   });
   const dots=nodes.map(n=>{ const col2=g(n.it.p.group).color;
