@@ -86,25 +86,43 @@
   /* 總覽：效益、人力與離線專案地圖 */
   .overview-hero{display:grid;grid-template-columns:minmax(250px,.9fr) minmax(0,2.7fr);gap:16px;align-items:stretch;}
   .overview-hero>.card,.overview-hero>.kpi{min-width:0;}
-  .overview-hero>.kpi{grid-row:1 / span 2;display:flex;flex-direction:column;}
+  .overview-hero>.kpi{display:flex;flex-direction:column;}
   #effPanel{flex:1;display:flex;flex-direction:column;min-height:0;}
   .eff-rows{flex:1;display:flex;flex-direction:column;justify-content:space-around;gap:9px;}
-  .bubble-card{display:flex;flex-direction:column;}
-  .bubble-head{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 14px;margin-bottom:4px;}
-  .bubble-head b{font-weight:700;color:var(--blue);}
-  .qd-board{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));}
-  .qd-col{display:flex;flex-direction:column;min-width:0;min-height:0;padding:8px 6px 6px 8px;border-radius:12px;border-top:3px solid rgb(var(--qd-rgb));background:rgba(var(--qd-rgb),.09);}
-  .qd-head{display:flex;align-items:center;gap:6px;font-size:12px;}
-  .qd-head b{font-weight:800;color:rgb(var(--qd-rgb));filter:brightness(.8);}
-  .qd-n{margin-left:auto;font-weight:800;font-size:12px;padding:0 7px;border-radius:9px;background:rgba(var(--qd-rgb),.18);color:var(--text);font-variant-numeric:tabular-nums;}
-  .qd-sub{font-size:10px;color:var(--muted);line-height:1.35;margin:2px 0 4px;}
-  .qd-sub b{font-weight:700;color:var(--text);}
-  .qd-viz{position:relative;flex:none;height:170px;}
-  .qd-viz svg{position:absolute;inset:0;display:block;}
-  .qd-viz circle{cursor:pointer;transition:stroke .15s;}
-  .qd-viz circle:hover{stroke:#223;stroke-width:2;}
-  .qd-empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--muted);}
-  .project-map-card{display:flex;flex-direction:column;gap:10px;grid-column:2;}
+  /* 技術 × 應用 創利矩陣 */
+  .mx-head0{display:flex;align-items:center;flex-wrap:wrap;gap:6px 16px;margin-bottom:10px;}
+  .mx-cycle{font-size:12px;padding:5px 11px;border-radius:9px;background:rgba(91,141,239,.1);border:1px solid rgba(91,141,239,.25);}
+  .mx-cycle b{font-weight:800;}
+  .mx-mgr{font-size:11px;padding:3px 10px;border-radius:12px;background:#c9cdd4;color:#454b55;font-weight:700;}
+  .mx-tools{margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .mx-wrap{display:grid;grid-template-columns:26px minmax(0,1fr);gap:6px 8px;}
+  .mx-yax{display:flex;flex-direction:column;align-items:center;justify-content:space-between;font-size:11px;color:var(--muted);padding:4px 0;}
+  .mx-yax b{writing-mode:vertical-rl;letter-spacing:.35em;color:var(--blue);font-size:12px;}
+  .mx-xax{grid-column:2;display:flex;justify-content:space-between;font-size:11px;color:var(--muted);}
+  .mx-xax b{color:var(--blue);font-size:12px;}
+  .mx-board{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
+  .mx-cell{display:flex;flex-direction:column;min-width:0;padding:10px 12px 10px 14px;border-radius:12px;border-left:5px solid rgb(var(--mx-rgb));background:rgba(255,255,255,.62);box-shadow:var(--shadow-1);}
+  .mx-head{display:flex;align-items:baseline;gap:8px;}
+  .mx-head b{font-size:15px;font-weight:800;color:#223;}
+  .mx-head i{font-size:11px;color:var(--muted);}
+  .mx-pill{margin-left:auto;align-self:center;font-size:11px;font-weight:800;color:#fff;padding:2px 12px;border-radius:12px;background:rgb(var(--mx-rgb));text-shadow:0 1px 1px rgba(0,0,0,.25);}
+  .mx-axis{display:flex;align-items:baseline;flex-wrap:wrap;gap:2px 10px;font-size:11px;font-weight:700;color:rgb(var(--mx-rgb));filter:brightness(.75);margin:1px 0 4px;}
+  .mx-sum{margin-left:auto;font-weight:600;color:var(--muted);filter:none;}
+  .mx-viz{position:relative;flex:none;height:150px;border-radius:8px;background:rgba(var(--mx-rgb),.07);}
+  .mx-viz svg{position:absolute;inset:0;display:block;}
+  .mx-viz circle{cursor:pointer;transition:stroke .15s;}
+  .mx-viz circle:hover{stroke:#223;stroke-width:2;}
+  .mx-empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--muted);}
+  .mx-foot{display:flex;align-items:flex-end;gap:10px;margin-top:7px;padding-top:6px;border-top:1px solid var(--line);font-size:11px;line-height:1.55;color:var(--muted);}
+  .mx-foot>div{flex:1;min-width:0;}
+  .mx-foot em{font-style:normal;font-weight:800;color:#223;margin-right:6px;}
+  .mx-foot b{font-weight:700;color:rgb(var(--mx-rgb));filter:brightness(.75);}
+  .mx-agent{flex:none;font-size:11px;font-weight:700;padding:2px 10px;border-radius:12px;background:#d9dce2;color:#555c68;}
+  .mx-todo{font-size:11px;padding:3px 10px;border-radius:12px;border:1px dashed #d99a22;background:rgba(217,154,34,.1);color:#8a5d10;cursor:pointer;font:inherit;font-size:11px;}
+  .mx-todo:hover{background:rgba(217,154,34,.2);}
+  .mx-note{font-size:12px;padding:8px 12px;margin-bottom:10px;border-radius:9px;background:rgba(217,154,34,.1);color:#8a5d10;}
+  .project-map-card{display:flex;flex-direction:column;gap:10px;margin-top:16px;}
+  .mx-sub{font-size:11px;color:var(--muted);margin:-4px 0 8px;line-height:1.7;}
   .project-map-head{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap;}
   .project-map-head h3{font-size:14px;font-weight:800;color:var(--text);}
   .project-map-meta,.project-map-total{font-size:11px;color:var(--muted);}
@@ -147,10 +165,6 @@
   .project-map-project{display:block;width:100%;text-align:left;font:inherit;cursor:pointer;margin-bottom:8px;}
   .project-map-project:focus-visible{outline:2px solid var(--blue2);outline-offset:2px;}
   @media(min-width:1101px){
-    .overview-hero{grid-template-rows:1fr 1fr;}
-    #bubbleHost{flex:1;position:relative;min-height:200px;}
-    #bubbleHost>.qd-board{position:absolute;inset:0;grid-template-columns:var(--qd-cols);grid-template-rows:minmax(0,1fr);}
-    #bubbleHost .qd-viz{flex:1;height:auto;min-height:0;}
     .project-map-canvas{min-height:150px;}
     .project-map-svg{position:absolute;inset:0;height:100%;}
   }
@@ -161,7 +175,7 @@
   }
   @media(max-width:720px){
     .overview-hero{grid-template-columns:minmax(0,1fr);}
-    .overview-hero>.kpi{grid-row:auto;}
+    .mx-board{grid-template-columns:minmax(0,1fr);}
     .project-map-card{grid-column:auto;}
     .project-map-list{grid-template-columns:minmax(0,1fr);}
   }
@@ -670,37 +684,55 @@ function barChart(items, color){ // items: [{label,value, color?}]
   </div>`;
 }
 
-/* ---------- 效益 × 人力 四象限（依人均效益與資料完整度分組，每欄以泡泡群呈現）---------- */
+/* ---------- 技術 × 應用 創利矩陣（技術成熟度 × 應用市場，每格以泡泡群呈現）---------- */
+// 每個專案用 p.quad 指定象限（defend/future/cash/beach），空字串＝未分類
+const MX_CELLS=[
+  {id:'defend',rgb:'68,114,196', title:'效率升級',en:'Defend & Upgrade', pill:'守成增利', axis:'新技術 × 既有應用',
+    strategy:'拉高毛利、提升客戶轉換成本', kpi:'毛利 ↑ · 省人 ↓ 33%', agent:'LLM 工作流 Agent'},
+  {id:'future',rgb:'144,72,200', title:'未來引擎',en:'Future Engine',   pill:'押注成長', axis:'新技術 × 新興應用',
+    strategy:'三年後第二曲線、技術門檻', kpi:'檢測效能 ↑30% · 新技術 milestone', agent:'趨勢匹配 Agent'},
+  {id:'cash',  rgb:'230,178,0',  title:'現金流',en:'Cash Flow',        pill:'穩定金流', axis:'成熟技術 × 既有應用',
+    strategy:'標準化複製、壓低成本供血', kpi:'Cost ↓ 50%', agent:'PM 專家系統 + RAG'},
+  {id:'beach', rgb:'96,184,40',  title:'快速卡位',en:'Beachhead',        pill:'低風險卡位', axis:'成熟技術 × 新興應用',
+    strategy:'用既有能力切新客戶、建 reference', kpi:'切入新技術、建立量測能力', agent:'光學專家系統'}
+];
+function quadOptions(cur){
+  return `<option value="" ${!cur?'selected':''}>（未分類）</option>`+MX_CELLS.map(c=>`<option value="${c.id}" ${cur===c.id?'selected':''}>${c.title}｜${c.axis}</option>`).join('');
+}
 function qdLegend(){
   return `<span>${DATA.groups.map(gr=>`<span class="tag" style="background:${gr.color}33;color:#333">● ${esc(gr.name)}</span>`).join('')}</span>`;
 }
 function quadrantGroups(){
-  const avg=deptEfficiency().perHead;
   const items=DATA.projects.map(p=>({p,b:projBenefit(p),h:projHeadcount(p)}));
-  items.forEach(it=>{ it.per=it.h>0?it.b/it.h:0; });
-  return {avg, cols:[
-    {id:'ok',  rgb:'54,179,126', title:'⭐ 高產出',     size:'b', sub:`人均效益 ≥ 部門平均 ${avg} 萬/人 · 泡泡＝效益`,
-      list:items.filter(it=>it.b>0&&it.h>0&&it.per>=avg).sort((a,b)=>b.per-a.per)},
-    {id:'warn',rgb:'224,86,63',  title:'⚠ 多人低效益', size:'b', sub:`人均效益 < 部門平均 · 泡泡＝效益`,
-      list:items.filter(it=>it.b>0&&it.h>0&&it.per<avg).sort((a,b)=>a.per-b.per)},
-    {id:'todo',rgb:'217,154,34', title:'📝 未填效益',   size:'h', sub:'效益為 0 或未填 · 泡泡＝投入人數',
-      list:items.filter(it=>it.b<=0).sort((a,b)=>b.h-a.h)},
-    {id:'hr',  rgb:'91,115,160', title:'👥 未填人力',   size:'b', sub:'有效益、沒投入人力 · 泡泡＝效益',
-      list:items.filter(it=>it.b>0&&it.h<=0).sort((a,b)=>b.b-a.b)}
-  ]};
+  const cols=MX_CELLS.map(c=>Object.assign({size:'h'},c,{list:items.filter(it=>it.p.quad===c.id).sort((a,b)=>b.h-a.h)}));
+  const todo=items.filter(it=>!MX_CELLS.some(c=>c.id===it.p.quad));
+  return {cols,todo};
 }
 function quadrantBoard(){
   const q=quadrantGroups();
-  if(!DATA.projects.length) return '<div class="empty">尚無專案資料。</div>';
-  const cols=q.cols.map(c=>{
+  const cells=q.cols.map(c=>{
     const sh=Math.round(c.list.reduce((a,it)=>a+it.h,0)*10)/10, sb=c.list.reduce((a,it)=>a+it.b,0);
-    const sum=c.list.length?`合計 ${sh} 人${sb?` · 效益 ${sb} 萬`:''}`:'—';
-    return `<section class="qd-col" style="--qd-rgb:${c.rgb}" aria-label="${esc(c.title)}">
-      <div class="qd-head"><b>${c.title}</b><span class="qd-n">${c.list.length}</span></div>
-      <div class="qd-sub">${c.sub}<br><b>${sum}</b></div>
-      <div class="qd-viz">${c.list.length?'':'<div class="qd-empty">目前沒有</div>'}</div></section>`; }).join('');
-  const w=q.cols.map(c=>c.list.length?(c.id==='todo'?1.35:1):.55);
-  return `<div class="qd-board" style="--qd-cols:${w.map(x=>`minmax(0,${x}fr)`).join(' ')}">${cols}</div>`;
+    return `<section class="mx-cell" style="--mx-rgb:${c.rgb}" aria-label="${esc(c.title)}">
+      <div class="mx-head"><b>${c.title}</b><i>${c.en}</i><span class="mx-pill">${c.pill}</span></div>
+      <div class="mx-axis">${c.axis}<span class="mx-sum">${c.list.length} 案${c.list.length?` · 合計 ${sh} 人${sb?` · 效益 ${sb} 萬`:''}`:''}</span></div>
+      <div class="mx-viz">${c.list.length?'':'<div class="mx-empty">尚無專案歸在這一格</div>'}</div>
+      <div class="mx-foot"><div><em>策略</em>${esc(c.strategy)}<br><em>KPI</em><b>${esc(c.kpi)}</b></div><span class="mx-agent">${esc(c.agent)}</span></div></section>`; }).join('');
+  return `<div class="mx-wrap">
+    <div class="mx-yax"><span>前沿 ▲</span><b>技術成熟度</b><span>▼ 成熟</span></div>
+    <div class="mx-board">${cells}</div>
+    <div class="mx-xax"><span>◀ 既有市場</span><b>應用市場</b><span>新興市場 ▶</span></div></div>`;
+}
+function classifyModal(){
+  const rows=DATA.projects.slice().sort((a,b)=>String(g(a.group).name).localeCompare(String(g(b.group).name),'zh-Hant')||String(a.name).localeCompare(String(b.name),'zh-Hant'))
+    .map(p=>`<tr><td style="padding:4px 8px 4px 0">${esc(p.name)}</td><td style="padding:4px 8px"><span class="tag" style="background:${g(p.group).color}33;color:#333">${esc(g(p.group).name)}</span></td><td style="padding:4px 0"><select data-qpid="${esc(p.id)}" style="width:100%">${quadOptions(p.quad||'')}</select></td></tr>`).join('');
+  openModal(`<h3>專案分類：技術 × 應用</h3>
+    <div class="hint" style="margin-bottom:8px">依「技術成熟度（新／成熟）× 應用市場（既有／新興）」指定每個專案所在的創利矩陣格子；也可在「編輯專案」內單獨設定。</div>
+    <div style="max-height:56vh;overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:12px"><tbody>${rows}</tbody></table></div>
+    <div class="modal-foot"><button class="btn ghost" onclick="closeModal()">取消</button><button class="btn" onclick="saveClassify()">儲存</button></div>`);
+}
+function saveClassify(){
+  document.querySelectorAll('select[data-qpid]').forEach(el=>{ const p=proj(el.dataset.qpid); if(p) p.quad=el.value; });
+  save(); closeModal(); render();
 }
 // 泡泡群：面積＝該欄的重點數值（有效益的欄＝效益；未填效益的欄＝投入人數），顏色＝廠區；只為前幾名重點專案標名稱，其餘游標移上去看
 // 版面需要實體尺寸，所以由 fitQuadrants() 在 DOM 建立後量測再繪製
@@ -740,8 +772,8 @@ function bubbleCluster(col,W,H){
   return `<svg viewBox="0 0 ${W} ${H}" width="100%" height="100%" role="group" aria-label="${esc(col.title)}">${dots}${labels.join('')}</svg>`;
 }
 function fitQuadrants(){
-  const board=document.querySelector('.qd-board'); if(!board) return;
-  const vizs=[...board.querySelectorAll('.qd-viz')];
+  const board=document.querySelector('.mx-board'); if(!board) return;
+  const vizs=[...board.querySelectorAll('.mx-viz')];
   const sizes=vizs.map(v=>[Math.round(v.clientWidth),Math.round(v.clientHeight)]);
   const key=sizes.join('|');
   if(board.dataset.fit===key||sizes.some(s=>s[0]<60||s[1]<60)) return;
@@ -953,9 +985,10 @@ function renderOverview(){
   // overload members
   const over=DATA.members.filter(u=>memberLoad(u.id).total>(u.capPct||100));
   const eff=deptEfficiency();
+  const mxTodo=quadrantGroups().todo.length;
 
   document.getElementById('view').innerHTML=`
-    <div class="section-title">人力投資效益 <span class="count">產出效益 ÷ 投入人數（單位：萬元/年）</span></div>
+    <div class="section-title">人力投資效益與創利矩陣 <span class="count">產出效益 ÷ 投入人數（萬元/年）｜技術成熟度 × 應用市場</span></div>
     <div class="overview-hero">
       <div class="kpi" style="background:linear-gradient(135deg,#16324f,#1f4e96);align-items:stretch;text-align:left">
         <div class="label">人均產出效益</div>
@@ -964,11 +997,17 @@ function renderOverview(){
         <div style="border-top:1px solid rgba(255,255,255,.18);margin:12px 0 10px"></div>
         <div style="font-size:12px;font-weight:700;opacity:.9;margin-bottom:8px">分維度人均效益</div>
         <div id="effPanel">${effPanelInner()}</div></div>
-      <div class="card bubble-card">
-        <div class="bubble-head"><b>效益 × 人力 四象限（點泡泡跳到專案）</b>${qdLegend()}</div>
-        <div id="bubbleHost">${quadrantBoard()}</div></div>
-      <div class="card project-map-card" id="projectMap" aria-label="專案地圖"></div>
+      <div class="card mx-card">
+        <div class="mx-head0">
+          <b style="font-size:15px;color:var(--blue)">技術 × 應用 創利矩陣</b>
+          <span class="mx-mgr">管理：部門指揮 Agent</span>
+          <span class="mx-cycle"><b>資源創利循環</b>　<b style="color:#b8860b">現金流</b> → <b style="color:#4472c4">效率升級</b> → <b style="color:#4f9a1f">卡位</b> → <b style="color:#9048c8">未來引擎</b></span>
+          <div class="mx-tools"><button class="mx-todo" onclick="classifyModal()">${mxTodo?`⚙ 未分類 ${mxTodo} 案，點此分類`:'⚙ 調整分類'}</button></div></div>
+        <div class="mx-sub">既有業務現金流、AI 升級毛利、成熟能力卡位、走出第二成長曲線　·　泡泡＝投入人數（各格獨立縮放）· 顏色＝廠區：${qdLegend()}</div>
+        ${mxTodo===DATA.projects.length&&mxTodo?'<div class="mx-note">尚未指定任何專案的所屬格子：點右上「未分類」按鈕批次分類，或到「編輯專案」逐案設定。</div>':''}
+        <div id="matrixHost">${quadrantBoard()}</div></div>
     </div>
+    <div class="card project-map-card" id="projectMap" aria-label="專案地圖"></div>
 
     <div class="section-title" style="margin-top:26px">技術模塊完成度</div>
     <div class="row">
@@ -1729,6 +1768,7 @@ function editProject(id){
     <div class="row"><div class="field" style="flex:1"><label>線體群組／廠區</label><select id="f_group" onchange="groupSelectChange(this)">${DATA.groups.slice().sort((a,b)=>String(a.name).localeCompare(String(b.name),'zh-Hant')).map(gr=>`<option value="${gr.id}" ${p.group===gr.id?'selected':''}>${esc(gr.name)}</option>`).join('')}<option value="__new__">＋ 新增廠區…</option></select></div>
       <div class="field" style="flex:1"><label>事業領域</label><select id="f_domain"><option value="">（未指派）</option>${ROADMAP_DOMAINS.map(dm=>`<option value="${dm}" ${projDomain(p)===dm?'selected':''}>${dm}</option>`).join('')}</select><div class="hint">Display／Mobility／Vertical 三大事業領域，決定此專案在清單中的分類</div></div>
       <div class="field" style="flex:1"><label>客戶</label><select id="f_customer" onchange="customerSelectChange(this)"><option value="" ${!p.customer?'selected':''}>（未指定）</option>${customerOptions(p.customer)}<option value="__new__">＋ 新增客戶…</option></select></div></div>
+    <div class="field"><label>創利矩陣格子（技術 × 應用）</label><select id="f_quad">${quadOptions(p.quad||'')}</select><div class="hint">技術成熟度（新／成熟）× 應用市場（既有／新興），顯示在總覽的創利矩陣</div></div>
     <div class="field"><label>地圖位置</label><select id="f_mapRegion">${projectMapOptions(p.mapRegion||'')}</select><div class="hint">預設依廠區設定／明確代碼對應；跨廠區或位置尚未確定時，可個別指定。不是客戶國籍。</div></div>
     <div class="field"><label>目前階段</label><input id="f_phase" value="${esc(p.phase)}"><div class="hint">填寫整個主專案的目前階段／狀態；各子專案（站點）階段請於下方各站個別填寫</div></div>
     <div class="row"><div class="field" style="flex:1"><label>進度 %</label><input id="f_progress" type="number" min="0" max="100" value="${p.progress||0}" oninput="refreshAutoStatus()"><div class="hint" id="f_progressHint" style="display:none">有 AOI 站點時，線進度＝各站平均自動計算</div></div>
@@ -1798,7 +1838,7 @@ function saveProject(pid,exists){
   syncStationsFromDOM();
   const orig=exists?proj(pid):null;
   const stations=EDIT_STATIONS.filter(s=>s.name||s.phase||s.moduleIds.length||s.ownerIds.length||(s.roles||[]).length||+s.benefit).map(s=>({id:s.id||uid('st'),name:s.name,phase:s.phase||'',progress:+s.progress||0,eta:s.eta||'',benefit:+s.benefit||0,moduleIds:[...s.moduleIds],ownerIds:[...s.ownerIds],roles:[...(s.roles||[])],roleMembers:JSON.parse(JSON.stringify(s.roleMembers||{}))}));
-  const o=Object.assign({},orig||{}, { id:pid, name:val('f_name'), group:val('f_group'), mapRegion:val('f_mapRegion'), domain:val('f_domain'), customer:val('f_customer'), phase:val('f_phase'),
+  const o=Object.assign({},orig||{}, { id:pid, name:val('f_name'), group:val('f_group'), mapRegion:val('f_mapRegion'), quad:val('f_quad'), domain:val('f_domain'), customer:val('f_customer'), phase:val('f_phase'),
     progress:+val('f_progress')||0, eta:fromDateInput(val('f_eta')),
     headcount:0, benefit:+val('f_benefit')||0, gains:val('f_gains'), weight:+val('f_weight')||1, lifecycle:val('f_lifecycle')||'active',
     needs:val('f_needs').split(/[,，]/).map(s=>s.trim()).filter(Boolean), moduleIds:(orig?orig.moduleIds||[]:[]), memberIds:getChecked('f_mems'), roleMembers:(orig?orig.roleMembers||{}:{}), stations });
