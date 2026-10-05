@@ -93,10 +93,9 @@
   .mx-head0{display:flex;align-items:center;flex-wrap:wrap;gap:6px 16px;margin-bottom:10px;}
   .mx-cycle{font-size:12px;padding:5px 11px;border-radius:9px;background:rgba(91,141,239,.1);border:1px solid rgba(91,141,239,.25);}
   .mx-cycle b{font-weight:800;}
-  .mx-mgr{font-size:11px;padding:3px 10px;border-radius:12px;background:#c9cdd4;color:#454b55;font-weight:700;}
   .mx-tools{margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
   .mx-wrap{display:grid;grid-template-columns:26px minmax(0,1fr);gap:6px 8px;}
-  .mx-yax{display:flex;flex-direction:column;align-items:center;justify-content:space-between;font-size:11px;color:var(--muted);padding:4px 0;}
+  .mx-yax{display:flex;flex-direction:column;align-items:center;justify-content:space-between;font-size:11px;line-height:1.3;text-align:center;white-space:nowrap;color:var(--muted);padding:4px 0;}
   .mx-yax b{writing-mode:vertical-rl;letter-spacing:.35em;color:var(--blue);font-size:12px;}
   .mx-xax{grid-column:2;display:flex;justify-content:space-between;font-size:11px;color:var(--muted);}
   .mx-xax b{color:var(--blue);font-size:12px;}
@@ -113,11 +112,6 @@
   .mx-viz circle{cursor:pointer;transition:stroke .15s;}
   .mx-viz circle:hover{stroke:#223;stroke-width:2;}
   .mx-empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--muted);}
-  .mx-foot{display:flex;align-items:flex-end;gap:10px;margin-top:7px;padding-top:6px;border-top:1px solid var(--line);font-size:11px;line-height:1.55;color:var(--muted);}
-  .mx-foot>div{flex:1;min-width:0;}
-  .mx-foot em{font-style:normal;font-weight:800;color:#223;margin-right:6px;}
-  .mx-foot b{font-weight:700;color:rgb(var(--mx-rgb));filter:brightness(.75);}
-  .mx-agent{flex:none;font-size:11px;font-weight:700;padding:2px 10px;border-radius:12px;background:#d9dce2;color:#555c68;}
   .mx-todo{font-size:11px;padding:3px 10px;border-radius:12px;border:1px dashed #d99a22;background:rgba(217,154,34,.1);color:#8a5d10;cursor:pointer;font:inherit;font-size:11px;}
   .mx-todo:hover{background:rgba(217,154,34,.2);}
   .mx-note{font-size:12px;padding:8px 12px;margin-bottom:10px;border-radius:9px;background:rgba(217,154,34,.1);color:#8a5d10;}
@@ -716,9 +710,9 @@ function quadrantBoard(){
       <div class="mx-head"><b>${c.title}</b><i>${c.en}</i><span class="mx-pill">${c.pill}</span></div>
       <div class="mx-axis">${c.axis}<span class="mx-sum">${c.list.length} 案${c.list.length?` · 合計 ${sh} 人${sb?` · 效益 ${sb} 萬`:''}`:''}</span></div>
       <div class="mx-viz">${c.list.length?'':'<div class="mx-empty">尚無專案歸在這一格</div>'}</div>
-      <div class="mx-foot"><div><em>策略</em>${esc(c.strategy)}<br><em>KPI</em><b>${esc(c.kpi)}</b></div><span class="mx-agent">${esc(c.agent)}</span></div></section>`; }).join('');
+      </section>`; }).join('');
   return `<div class="mx-wrap">
-    <div class="mx-yax"><span>前沿 ▲</span><b>技術成熟度</b><span>▼ 成熟</span></div>
+    <div class="mx-yax"><span>▲<br>前沿</span><b>技術成熟度</b><span>成熟<br>▼</span></div>
     <div class="mx-board">${cells}</div>
     <div class="mx-xax"><span>◀ 既有市場</span><b>應用市場</b><span>新興市場 ▶</span></div></div>`;
 }
@@ -1000,7 +994,6 @@ function renderOverview(){
       <div class="card mx-card">
         <div class="mx-head0">
           <b style="font-size:15px;color:var(--blue)">技術 × 應用 創利矩陣</b>
-          <span class="mx-mgr">管理：部門指揮 Agent</span>
           <span class="mx-cycle"><b>資源創利循環</b>　<b style="color:#b8860b">現金流</b> → <b style="color:#4472c4">效率升級</b> → <b style="color:#4f9a1f">卡位</b> → <b style="color:#9048c8">未來引擎</b></span>
           <div class="mx-tools"><button class="mx-todo" onclick="classifyModal()">${mxTodo?`⚙ 未分類 ${mxTodo} 案，點此分類`:'⚙ 調整分類'}</button></div></div>
         <div class="mx-sub">泡泡＝投入人數（各格獨立縮放）<span class="mx-lg">${DATA.groups.map(gr=>`<span><i style="background:${gr.color}"></i>${esc(gr.name)}</span>`).join('')}</span></div>
