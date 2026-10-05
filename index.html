@@ -85,7 +85,8 @@
   .card:hover{box-shadow:var(--shadow-2);}
   /* 總覽：效益、人力與離線專案地圖 */
   .overview-hero{display:grid;grid-template-columns:minmax(250px,.9fr) minmax(0,2.7fr);gap:16px;align-items:stretch;}
-  .overview-hero>.card,.overview-hero>.kpi{min-width:0;}
+  .overview-hero>.card,.overview-hero>.kpi,.ov-right{min-width:0;}
+  .ov-right{display:flex;flex-direction:column;gap:16px;}
   .overview-hero>.kpi{display:flex;flex-direction:column;}
   #effPanel{flex:1;display:flex;flex-direction:column;min-height:0;}
   .eff-rows{flex:1;display:flex;flex-direction:column;justify-content:space-around;gap:9px;}
@@ -115,7 +116,7 @@
   .mx-todo{font-size:11px;padding:3px 10px;border-radius:12px;border:1px dashed #d99a22;background:rgba(217,154,34,.1);color:#8a5d10;cursor:pointer;font:inherit;font-size:11px;}
   .mx-todo:hover{background:rgba(217,154,34,.2);}
   .mx-note{font-size:12px;padding:8px 12px;margin-bottom:10px;border-radius:9px;background:rgba(217,154,34,.1);color:#8a5d10;}
-  .project-map-card{display:flex;flex-direction:column;gap:10px;margin-top:16px;}
+  .project-map-card{display:flex;flex-direction:column;gap:10px;}
   .mx-sub{display:flex;align-items:center;flex-wrap:wrap;gap:2px 14px;font-size:11px;color:var(--muted);margin:-4px 0 8px;}
   .mx-lg{display:flex;flex-wrap:wrap;gap:2px 10px;}
   .mx-lg span{display:inline-flex;align-items:center;gap:4px;white-space:nowrap;}
@@ -991,6 +992,7 @@ function renderOverview(){
         <div style="border-top:1px solid rgba(255,255,255,.18);margin:12px 0 10px"></div>
         <div style="font-size:12px;font-weight:700;opacity:.9;margin-bottom:8px">分維度人均效益</div>
         <div id="effPanel">${effPanelInner()}</div></div>
+      <div class="ov-right">
       <div class="card mx-card">
         <div class="mx-head0">
           <b style="font-size:15px;color:var(--blue)">技術 × 應用 創利矩陣</b>
@@ -999,8 +1001,9 @@ function renderOverview(){
         <div class="mx-sub">泡泡＝投入人數（各格獨立縮放）<span class="mx-lg">${DATA.groups.map(gr=>`<span><i style="background:${gr.color}"></i>${esc(gr.name)}</span>`).join('')}</span></div>
         ${mxTodo===DATA.projects.length&&mxTodo?'<div class="mx-note">尚未指定任何專案的所屬格子：點右上「未分類」按鈕批次分類，或到「編輯專案」逐案設定。</div>':''}
         <div id="matrixHost">${quadrantBoard()}</div></div>
+      <div class="card project-map-card" id="projectMap" aria-label="專案地圖"></div>
+      </div>
     </div>
-    <div class="card project-map-card" id="projectMap" aria-label="專案地圖"></div>
 
     <div class="section-title" style="margin-top:26px">技術模塊完成度</div>
     <div class="row">
