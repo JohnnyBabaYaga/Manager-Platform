@@ -97,7 +97,7 @@
   .project-map-head h3{font-size:14px;font-weight:800;color:var(--text);}
   .project-map-meta,.project-map-total{font-size:11px;color:var(--muted);}
   .project-map-total{margin-left:auto;white-space:nowrap;}
-  .project-map-layout{flex:1;display:grid;grid-template-columns:minmax(0,1.5fr) minmax(280px,1fr);gap:18px;align-items:stretch;}
+  .project-map-layout{flex:1;display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,1fr);gap:18px;align-items:stretch;}
   .project-map-side{display:flex;flex-direction:column;gap:8px;min-width:0;justify-content:center;}
   .project-map-canvas{background:#f0f5fa;border-radius:12px;overflow:hidden;position:relative;}
   .project-map-svg{display:block;width:100%;height:auto;}
@@ -781,11 +781,11 @@ function roadmapDetail(id){
 // mapRegion 是選用欄位（project 優先於 group）：空白=自動、unknown=明確未設定。
 // 座標為地區代表點，並非精確廠址；代碼對照沿用專案地圖的 S17/S19、A02、E31、AMC、E21。
 const PROJECT_MAP_REGIONS = [
-  {id:'xiamen',name:'廈門',color:'#2795d2',lat:24.48,lon:118.09,dx:-19,dy:3,codes:['S17','S19'],match:/(廈門|厦门|xiamen)|(^|[^a-z0-9])(XM|S17|S19)(?=$|[^a-z0-9])/i},
+  {id:'xiamen',name:'廈門',color:'#2795d2',lat:24.48,lon:118.09,dx:-11,dy:3,codes:['S17','S19'],match:/(廈門|厦门|xiamen)|(^|[^a-z0-9])(XM|S17|S19)(?=$|[^a-z0-9])/i},
   {id:'mexico',name:'墨西哥',color:'#d88615',lat:23.63,lon:-102.55,dx:0,dy:0,codes:['A02'],match:/(墨西哥|mexico|méxico)|(^|[^a-z0-9])(MX|A02)(?=$|[^a-z0-9])/i},
-  {id:'bulgaria',name:'保加利亞',color:'#d94a8c',lat:42.70,lon:23.32,dx:18,dy:10,codes:['E31'],match:/(保加利亞|保加利亚|bulgaria)|(^|[^a-z0-9])(BG|E31)(?=$|[^a-z0-9])/i},
-  {id:'taiwan',name:'台灣',color:'#1b9f8f',lat:23.70,lon:121.00,dx:20,dy:3,codes:['AMC'],match:/(台灣|臺灣|台湾|taiwan)|(^|[^a-z0-9])(TW|AMC)(?=$|[^a-z0-9])/i},
-  {id:'germany',name:'德國',color:'#8059c9',lat:51.17,lon:10.45,dx:-7,dy:-9,codes:['E21'],match:/(德國|德国|germany)|(^|[^a-z0-9])(GM|DE|E21)(?=$|[^a-z0-9])/i}
+  {id:'bulgaria',name:'保加利亞',color:'#d94a8c',lat:42.70,lon:23.32,dx:12,dy:6,codes:['E31'],match:/(保加利亞|保加利亚|bulgaria)|(^|[^a-z0-9])(BG|E31)(?=$|[^a-z0-9])/i},
+  {id:'taiwan',name:'台灣',color:'#1b9f8f',lat:23.70,lon:121.00,dx:12,dy:3,codes:['AMC'],match:/(台灣|臺灣|台湾|taiwan)|(^|[^a-z0-9])(TW|AMC)(?=$|[^a-z0-9])/i},
+  {id:'germany',name:'德國',color:'#8059c9',lat:51.17,lon:10.45,dx:-4,dy:-6,codes:['E21'],match:/(德國|德国|germany)|(^|[^a-z0-9])(GM|DE|E21)(?=$|[^a-z0-9])/i}
 ];
 // Natural Earth ne_110m_land（public domain, https://www.naturalearthdata.com/about/terms-of-use/）。
 // 內嵌簡化陸地輪廓：經度 -30..330、緯度 -58..85，與 projectMapPoint() 共用投影；不載入線上地圖。
@@ -831,9 +831,9 @@ function projectMapPin(row){
   const label=`${row.name}：${row.active} 案進行中${row.done?'，'+row.done+' 案已完成':''}，點擊查看專案`;
   return `<g class="project-map-pin" role="button" tabindex="0" aria-label="${esc(label)}" style="color:${row.color}" data-map-region="${row.id}" onclick="showProjectMapRegion(this.dataset.mapRegion)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showProjectMapRegion(this.dataset.mapRegion)}">
     <title>${esc(label)}</title><path d="M${pos.x},${pos.y}L${x},${y}" fill="none" stroke="${row.color}" stroke-dasharray="2 2"/><circle cx="${pos.x}" cy="${pos.y}" r="2.5" fill="${row.color}"/>
-    <g transform="translate(${x} ${y})"><path class="pin-shape" d="M0,0C-5,-9 -15,-19 -15,-29A15,15 0 1 1 15,-29C15,-19 5,-9 0,0Z" fill="${row.color}" fill-opacity="${row.active?1:.65}"/>
-      <text y="-27" text-anchor="middle" dominant-baseline="middle" fill="#fff" font-size="14">${row.active}</text>
-      <text class="project-map-label" y="17" text-anchor="middle" fill="${row.color}" font-size="12">${row.name}</text></g></g>`;
+    <g transform="translate(${x} ${y})"><g transform="scale(.5)"><path class="pin-shape" d="M0,0C-5,-9 -15,-19 -15,-29A15,15 0 1 1 15,-29C15,-19 5,-9 0,0Z" fill="${row.color}" fill-opacity="${row.active?1:.65}"/>
+      <text y="-27" text-anchor="middle" dominant-baseline="middle" fill="#fff" font-size="19">${row.active}</text></g>
+      <text class="project-map-label" y="10" text-anchor="middle" fill="${row.color}" font-size="9.5">${row.name}</text></g></g>`;
 }
 function projectMapRow(row){
   const sites=row.id==='unknown'?'位置未確認':projectMapSiteLabel(row);
