@@ -89,6 +89,7 @@
   .overview-hero>.kpi{grid-row:1 / span 2;display:flex;flex-direction:column;}
   #effPanel{flex:1;display:flex;flex-direction:column;min-height:0;}
   .eff-rows{flex:1;display:flex;flex-direction:column;justify-content:space-around;gap:9px;}
+  .bubble-card{display:flex;flex-direction:column;}
   .bubble-head{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 14px;margin-bottom:4px;}
   .bubble-head b{font-weight:700;color:var(--blue);}
   .project-map-card{display:flex;flex-direction:column;gap:10px;grid-column:2;}
@@ -96,9 +97,9 @@
   .project-map-head h3{font-size:14px;font-weight:800;color:var(--text);}
   .project-map-meta,.project-map-total{font-size:11px;color:var(--muted);}
   .project-map-total{margin-left:auto;white-space:nowrap;}
-  .project-map-layout{flex:1;display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:20px;align-items:center;}
-  .project-map-side{display:flex;flex-direction:column;gap:8px;min-width:0;}
-  .project-map-canvas{background:#f0f5fa;border-radius:12px;overflow:hidden;}
+  .project-map-layout{flex:1;display:grid;grid-template-columns:minmax(0,1.5fr) minmax(280px,1fr);gap:18px;align-items:stretch;}
+  .project-map-side{display:flex;flex-direction:column;gap:8px;min-width:0;justify-content:center;}
+  .project-map-canvas{background:#f0f5fa;border-radius:12px;overflow:hidden;position:relative;}
   .project-map-svg{display:block;width:100%;height:auto;}
   .project-map-land{fill:#d6e0e8;stroke:#f0f5fa;stroke-width:.6;stroke-linejoin:round;}
   .project-map-pin{cursor:pointer;outline:none;}
@@ -110,7 +111,19 @@
   .project-map-row{display:flex;align-items:center;gap:10px;width:100%;min-height:28px;padding:3px 6px;border:0;border-radius:8px;background:transparent;cursor:pointer;font:inherit;text-align:left;transition:background .18s;}
   .project-map-row:hover{background:rgba(47,111,208,.07);}
   .project-map-row:focus-visible{outline:2px solid var(--blue2);outline-offset:1px;}
-  .project-map-swatch{width:4px;height:17px;border-radius:3px;background:var(--map-color);flex:0 0 auto;}
+  .project-map-swatch{width:4px;align-self:stretch;min-height:26px;border-radius:3px;background:var(--map-color);flex:0 0 auto;}
+  .project-map-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;}
+  .project-map-line{display:flex;align-items:center;gap:8px;min-width:0;}
+  .project-map-prog{display:flex;align-items:center;gap:7px;}
+  .project-map-prog b{font-size:10px;font-weight:700;color:var(--muted);min-width:28px;text-align:right;font-variant-numeric:tabular-nums;}
+  .project-map-bar{flex:1;height:5px;border-radius:4px;background:rgba(47,111,208,.12);overflow:hidden;}
+  .project-map-bar i{display:block;height:100%;border-radius:4px;background:var(--map-color,var(--blue2));}
+  .project-map-groups{display:flex;flex-direction:column;gap:7px;margin-bottom:14px;}
+  .project-map-grow{display:grid;grid-template-columns:minmax(80px,150px) 1fr 40px 40px;gap:10px;align-items:center;font-size:12px;}
+  .project-map-gname{display:flex;align-items:center;gap:6px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .project-map-gname i{width:8px;height:8px;border-radius:2px;flex:0 0 auto;}
+  .project-map-grow b{text-align:right;font-variant-numeric:tabular-nums;}
+  .project-map-gn{color:var(--muted);font-size:11px;text-align:right;}
   .project-map-name{font-size:12px;font-weight:800;color:var(--map-color);white-space:nowrap;}
   .project-map-site{font-size:10px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;}
   .project-map-count{font-size:13px;font-weight:800;color:var(--blue);margin-left:auto;white-space:nowrap;font-variant-numeric:tabular-nums;}
@@ -123,6 +136,10 @@
   .project-map-project:focus-visible{outline:2px solid var(--blue2);outline-offset:2px;}
   @media(min-width:1101px){
     .overview-hero{grid-template-rows:1fr 1fr;}
+    #bubbleHost{flex:1;position:relative;min-height:200px;}
+    #bubbleHost>svg{position:absolute;inset:0;width:100%;height:100%!important;}
+    .project-map-canvas{min-height:150px;}
+    .project-map-svg{position:absolute;inset:0;height:100%;}
   }
   @media(max-width:1100px){
     .overview-hero{grid-template-columns:minmax(250px,1fr) minmax(0,1.7fr);}
@@ -649,24 +666,42 @@ function bubbleChart(W,H){
   const pts=DATA.projects.map(p=>({p,x:projHeadcount(p),y:projBenefit(p)})).filter(d=>d.x>0||d.y>0);
   if(!pts.length) return '<div class="empty">尚無資料：請在專案填寫「投入人數」與「效益值」。</div>';
   const padL=56,padB=H<300?34:46,padT=H<300?16:20,padR=20,k=H<300?.75:1;
-  const maxX=Math.max(4,...pts.map(d=>d.x))+1, maxY=Math.max(100,...pts.map(d=>d.y))*1.1;
-  const medX=maxX/2, medY=maxY/2;
-  const sx=v=>padL+(v/maxX)*(W-padL-padR);
-  const sy=v=>H-padB-(v/maxY)*(H-padT-padB);
-  const dots=pts.map(d=>{ const c=g(d.p.group).color; const r=k*(8+(projProgress(d.p))/12);
-    return `<circle cx="${sx(d.x)}" cy="${sy(d.y)}" r="${r}" fill="${c}" fill-opacity="0.7" stroke="${c}" style="cursor:pointer" onclick="gotoProject('${d.p.id}')"><title>${esc(d.p.name)}｜${d.x}人｜效益${d.y}｜進度${projProgress(d.p)}%</title></circle>
-      <text x="${sx(d.x)}" y="${sy(d.y)-r-3}" font-size="10" text-anchor="middle" fill="#445">${esc(d.p.name.replace(/\(.*?\)/g,'').slice(0,8))}</text>`;}).join('');
+  const maxX=Math.max(4,...pts.map(d=>d.x))+.5, maxY=Math.max(100,...pts.map(d=>d.y))*1.06;
+  const medX=maxX/2, medY=maxY/2, gap=12;   // gap：讓 0 值的泡泡離開座標軸
+  const sx=v=>padL+gap+Math.sqrt(v/maxX)*(W-padL-padR-gap);
+  const sy=v=>H-padB-gap-Math.sqrt(v/maxY)*(H-padT-padB-gap);
+  const xt=[0,1,2,4,6,9,12,16,20,25].filter(v=>v<=maxX), yt=[0,25,50,100,200,300,400,500,600,800].filter(v=>v<=maxY);
+  const grid=xt.map(v=>`<line x1="${sx(v)}" y1="${padT}" x2="${sx(v)}" y2="${H-padB}" stroke="#eef2f8"/><text x="${sx(v)}" y="${H-padB+12}" font-size="9" text-anchor="middle" fill="#99a">${v}</text>`).join('')
+    +yt.map(v=>`<line x1="${padL}" y1="${sy(v)}" x2="${W-padR}" y2="${sy(v)}" stroke="#eef2f8"/><text x="${padL-5}" y="${sy(v)+3}" font-size="9" text-anchor="end" fill="#99a">${v}</text>`).join('');
+  const items=pts.map(d=>({d,c:g(d.p.group).color,r:k*(5+projProgress(d.p)/18),cx:sx(d.x),cy:sy(d.y),
+    name:d.p.name.replace(/\(.*?\)/g,'').replace('廠區導入自動化系統','').replace(/[\[\]]/g,'').trim()})).sort((a,b)=>b.r-a.r);
+  // 標籤避讓：優先標示效益高、人力多的專案；會壓到其他標籤/泡泡的就不標（游標移上去看完整資訊）
+  const tw=s=>{ let w=0; for(const ch of s) w+=ch.charCodeAt(0)>255?10.5:6.4; return w; };
+  const boxes=[{x:padL+4,y:padT+2,w:86,h:15},{x:W-padR-92,y:H-padB-gap-18,w:92,h:15}];
+  items.forEach(it=>boxes.push({x:it.cx-it.r,y:it.cy-it.r,w:it.r*2,h:it.r*2,own:it}));
+  const hit=(a,b)=>a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;
+  const labels=items.slice().sort((a,b)=>(b.d.y-a.d.y)||(b.d.x-a.d.x)).map(it=>{
+    const nm=it.name.length>10?it.name.slice(0,9)+'…':it.name, w=tw(nm)+4, h=12;
+    const cand=[{x:it.cx-w/2,y:it.cy-it.r-3-h,a:'middle',tx:it.cx},{x:it.cx+it.r+3,y:it.cy-h/2,a:'start',tx:it.cx+it.r+3},
+      {x:it.cx-it.r-3-w,y:it.cy-h/2,a:'end',tx:it.cx-it.r-3},{x:it.cx-w/2,y:it.cy+it.r+3,a:'middle',tx:it.cx}];
+    for(const c of cand){ const b={x:c.x,y:c.y,w,h};
+      if(b.x<padL+2||b.x+w>W-padR||b.y<padT-4||b.y+h>H-padB) continue;
+      if(boxes.some(o=>o.own!==it&&hit(b,o))) continue;
+      boxes.push(b); return `<text x="${c.tx}" y="${c.y+h-2}" font-size="10" text-anchor="${c.a}" fill="#334" stroke="#fff" stroke-width="2.5" paint-order="stroke" style="pointer-events:none">${esc(nm)}</text>`; }
+    return ''; }).join('');
+  const dots=items.map(it=>`<circle cx="${it.cx}" cy="${it.cy}" r="${it.r}" fill="${it.c}" fill-opacity="0.68" stroke="${it.c}" style="cursor:pointer" onclick="gotoProject('${it.d.p.id}')"><title>${esc(it.d.p.name)}｜${it.d.x}人｜效益${it.d.y}｜進度${projProgress(it.d.p)}%</title></circle>`).join('');
   return `
   <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto">
+    ${grid}
     <line x1="${sx(medX)}" y1="${padT}" x2="${sx(medX)}" y2="${H-padB}" stroke="#dde4ee" stroke-dasharray="4"/>
     <line x1="${padL}" y1="${sy(medY)}" x2="${W-padR}" y2="${sy(medY)}" stroke="#dde4ee" stroke-dasharray="4"/>
     <line x1="${padL}" y1="${padT}" x2="${padL}" y2="${H-padB}" stroke="#99a"/>
     <line x1="${padL}" y1="${H-padB}" x2="${W-padR}" y2="${H-padB}" stroke="#99a"/>
     <text x="${padL+8}" y="${padT+14}" font-size="11" fill="#36b37e" font-weight="700">⭐ 少人高效益</text>
     <text x="${W-padR-8}" y="${H-padB-8}" font-size="11" fill="#e0563f" font-weight="700" text-anchor="end">⚠ 多人低效益</text>
-    <text x="${W/2}" y="${H-10}" font-size="12" text-anchor="middle" fill="#6b7a90">投入人數 →</text>
+    <text x="${W/2}" y="${H-10}" font-size="11" text-anchor="middle" fill="#6b7a90">投入人數 →　<tspan font-size="9" fill="#99a">（刻度為平方根尺度；僅標示不重疊的名稱，游標移到泡泡看完整資訊）</tspan></text>
     <text x="14" y="${H/2}" font-size="12" text-anchor="middle" fill="#6b7a90" transform="rotate(-90 14 ${H/2})">產出效益（萬元/年）→</text>
-    ${dots}
+    ${dots}${labels}
   </svg>`;
 }
 
@@ -771,13 +806,15 @@ function projectMapRegion(p){
 function projectMapProjects(){
   return (DATA.projects||[]).filter(p=>!PROJECT_MAP_DOMAIN || (PROJECT_MAP_DOMAIN==='__none__'?!projDomain(p):projDomain(p)===PROJECT_MAP_DOMAIN));
 }
+function projectMapAvg(ps){ return ps.length?Math.round(ps.reduce((a,p)=>a+projProgress(p),0)/ps.length):0; }
 function projectMapStats(){
   const projects=projectMapProjects();
   const rows=PROJECT_MAP_REGIONS.map(r=>Object.assign({},r,{projects:[],active:0,done:0}));
   const unknown={id:'unknown',name:'未設定',color:'#98a6b8',codes:[],projects:[],active:0,done:0};
   projects.forEach(p=>{ const r=projectMapRegion(p); const row=r?rows.find(x=>x.id===r.id):unknown;
     row.projects.push(p); if(isDone(p)) row.done++; else row.active++; });
-  return {projects,unknown,active:projects.filter(p=>!isDone(p)).length,done:projects.filter(isDone).length,
+  rows.concat([unknown]).forEach(row=>{ row.avg=projectMapAvg(row.projects); });
+  return {projects,unknown,active:projects.filter(p=>!isDone(p)).length,done:projects.filter(isDone).length,avg:projectMapAvg(projects),
     rows:rows.filter(r=>r.projects.length).sort((a,b)=>b.active-a.active || b.done-a.done || a.name.localeCompare(b.name,'zh-Hant'))};
 }
 function projectMapPoint(r){
@@ -801,30 +838,38 @@ function projectMapPin(row){
 function projectMapRow(row){
   const sites=row.id==='unknown'?'位置未確認':projectMapSiteLabel(row);
   return `<button type="button" class="project-map-row" style="--map-color:${row.color}" data-map-region="${row.id}" onclick="showProjectMapRegion(this.dataset.mapRegion)" aria-label="${row.name}：${row.active} 案進行中，${row.done} 案已完成">
-    <span class="project-map-swatch" aria-hidden="true"></span><span class="project-map-name">${row.name}</span><span class="project-map-site" title="${esc(sites)}">${esc(sites)}</span>
-    <span class="project-map-count">${row.active}${row.done?`<span class="project-map-done" title="${row.done} 案已完成（轉量產／Phase-out）">+${row.done}</span>`:''}</span></button>`;
+    <span class="project-map-swatch" aria-hidden="true"></span>
+    <span class="project-map-main"><span class="project-map-line"><span class="project-map-name">${row.name}</span><span class="project-map-site" title="${esc(sites)}">${esc(sites)}</span>
+    <span class="project-map-count">${row.active}${row.done?`<span class="project-map-done" title="${row.done} 案已完成（轉量產／Phase-out）">+${row.done}</span>`:''}</span></span>
+    <span class="project-map-prog" title="平均完成度 ${row.avg}%"><span class="project-map-bar"><i style="width:${row.avg}%"></i></span><b>${row.avg}%</b></span></span></button>`;
 }
 function setProjectMapDomain(d){ PROJECT_MAP_DOMAIN=d; renderProjectMap(); }
 function renderProjectMap(){
   const el=document.getElementById('projectMap'); if(!el) return;
   const stats=projectMapStats();
   const domains=[...new Set([...ROADMAP_DOMAINS,...(DATA.projects||[]).map(projDomain).filter(Boolean)])];
-  el.innerHTML=`<div class="project-map-head"><h3>專案地圖</h3><span class="project-map-meta">${stats.rows.length} 個地區</span><span class="project-map-total">運作中 <b>${stats.active}</b> 案</span></div>
-    <div class="project-map-layout"><div class="project-map-canvas"><svg class="project-map-svg" viewBox="0 0 460 220" role="group" aria-label="專案地區分布世界地圖">
+  el.innerHTML=`<div class="project-map-head"><h3>專案地圖</h3><span class="project-map-meta">${stats.rows.length} 個地區</span><span class="project-map-total">運作中 <b>${stats.active}</b> 案 · 平均完成度 <b>${stats.avg}%</b></span></div>
+    <div class="project-map-layout"><div class="project-map-canvas"><svg class="project-map-svg" viewBox="20 2 380 158" preserveAspectRatio="xMidYMid meet" role="group" aria-label="專案地區分布世界地圖">
       <path class="project-map-land" d="${PROJECT_MAP_LAND}" aria-hidden="true"/>${stats.rows.map(projectMapPin).join('')}</svg></div>
       <div class="project-map-side"><div class="project-map-list">${stats.rows.map(projectMapRow).join('')}${stats.unknown.projects.length?projectMapRow(stats.unknown):''}
         ${stats.projects.length?'':'<div class="project-map-empty">目前範圍尚無專案</div>'}</div>
       <div class="project-map-tools"><select aria-label="地圖事業領域篩選" onchange="setProjectMapDomain(this.value)"><option value="" ${!PROJECT_MAP_DOMAIN?'selected':''}>全部領域</option>
       ${domains.map(d=>`<option value="${esc(d)}" ${PROJECT_MAP_DOMAIN===d?'selected':''}>${esc(d)}</option>`).join('')}<option value="__none__" ${PROJECT_MAP_DOMAIN==='__none__'?'selected':''}>未指派領域</option></select>
       <button class="btn sm ghost" type="button" onclick="editProjectMapLocations()">位置設定</button></div>
-      <div class="project-map-note">數字＝進行中；+N＝已完成（轉量產／Phase-out）。廠區位置示意 · 點地區看專案 · 未確認位置不標點</div></div></div>`;
+      <div class="project-map-note">數字＝進行中；+N＝已完成；條＝平均完成度。廠區位置示意 · 點地區看線體與專案 · 未確認位置不標點</div></div></div>`;
 }
 function showProjectMapRegion(id){
   const stats=projectMapStats(), row=id==='unknown'?stats.unknown:stats.rows.find(r=>r.id===id); if(!row) return;
   const cards=done=>row.projects.filter(p=>isDone(p)===done).map(p=>`<button type="button" class="card project-map-project" data-project-id="${esc(p.id)}" onclick="closeModal();openProjectFromMap(this.dataset.projectId)">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><b>${esc(p.name)}</b>${done?lifecycleBadge(p.lifecycle):projStatusBadge(p)}</div>
     <div style="font-size:12px;color:var(--muted);margin-top:7px">${esc(g(p.group).name)} · 進度 ${projProgress(p)}% · ${esc(projPhase(p)||'尚未填寫階段')}</div></button>`).join('');
+  const groupIds=[...new Set(row.projects.map(p=>p.group))];
+  const groupRows=groupIds.map(gid=>{ const ps=row.projects.filter(p=>p.group===gid), gr=g(gid), a=projectMapAvg(ps);
+    return `<div class="project-map-grow"><span class="project-map-gname" title="${esc(gr.name)}"><i style="background:${gr.color}"></i>${esc(gr.name)}</span>
+      <span class="project-map-bar"><i style="width:${a}%;background:${gr.color}"></i></span><b>${a}%</b><span class="project-map-gn">${ps.length} 案</span></div>`; }).join('');
   openModal(`<h3>${row.name} · 專案清單</h3><div class="hint" style="margin-bottom:14px">${row.active} 案進行中 · ${row.done} 案已完成${PROJECT_MAP_DOMAIN?' · '+esc(PROJECT_MAP_DOMAIN==='__none__'?'未指派領域':PROJECT_MAP_DOMAIN):''} · 點專案前往明細</div>
+    <div class="section-title" style="font-size:13px">線體完成度 <span class="count">地區平均 ${row.avg}%</span></div>
+    <div class="project-map-groups">${groupRows}</div>
     ${id==='unknown'?'<div class="note">無法確認廠區位置，或名稱包含多個地區。請在「位置設定」指定廠區位置，或在個別專案編輯中選擇「地圖位置」。</div>':''}
     ${row.active?`<div class="section-title" style="font-size:13px">進行中</div>${cards(false)}`:''}
     ${row.done?`<div class="section-title" style="font-size:13px;margin-top:16px">已完成</div>${cards(true)}`:''}
@@ -855,12 +900,6 @@ function saveProjectMapLocations(){
 
 /* ============================================================ OVERVIEW ============================================================ */
 function renderOverview(){
-  // project completion by group
-  const groupStats = DATA.groups.map(gr=>{
-    const ps=DATA.projects.filter(p=>p.group===gr.id);
-    const avg=ps.length?Math.round(ps.reduce((a,p)=>a+projProgress(p),0)/ps.length):0;
-    return {gr, avg, n:ps.length};
-  });
   // module completion by category
   const cats=[...new Set(DATA.modules.map(m=>m.category))];
   const catStats=cats.map(c=>{ const ms=DATA.modules.filter(m=>m.category===c); const avg=ms.length?Math.round(ms.reduce((a,m)=>a+(+m.progress||0),0)/ms.length):0; return {c,avg,n:ms.length}; });
@@ -878,17 +917,10 @@ function renderOverview(){
         <div style="border-top:1px solid rgba(255,255,255,.18);margin:12px 0 10px"></div>
         <div style="font-size:12px;font-weight:700;opacity:.9;margin-bottom:8px">分維度人均效益</div>
         <div id="effPanel">${effPanelInner()}</div></div>
-      <div class="card">
+      <div class="card bubble-card">
         <div class="bubble-head"><b>效益 × 人力 分布（點泡泡可跳到該專案）</b>${bubbleLegend()}</div>
         <div id="bubbleHost">${bubbleChart()}</div></div>
       <div class="card project-map-card" id="projectMap" aria-label="專案地圖"></div>
-    </div>
-
-    <div class="section-title" style="margin-top:26px">專案線體完成度</div>
-    <div class="row">
-      ${groupStats.map(s=>`<div class="kpi" style="background:linear-gradient(135deg,${s.gr.color},${s.gr.color}cc)">
-        <div class="label">${esc(s.gr.name)} 完成度 <span style="opacity:.8">(${s.n}案)</span></div>
-        <div class="pct">${s.avg}%</div><div class="bar"><span style="width:${s.avg}%"></span></div></div>`).join('')}
     </div>
 
     <div class="section-title" style="margin-top:26px">技術模塊完成度</div>
@@ -912,11 +944,12 @@ function renderOverview(){
   renderProjectMap();
   fitBubble();
 }
-function bubbleSize(w){ return {W:w, H:window.innerWidth>1100?200:(w>=600?260:Math.max(200,Math.round(w*.6)))}; }
+function bubbleSize(w,h){ return {W:w, H:window.innerWidth>1100?Math.max(150,h):(w>=600?260:Math.max(200,Math.round(w*.6)))}; }
 function fitBubble(){
   const host=document.getElementById('bubbleHost'); if(!host) return;
-  const w=Math.round(host.clientWidth); if(w<200||host.dataset.w==String(w)) return;
-  host.dataset.w=w; const s=bubbleSize(w); host.innerHTML=bubbleChart(s.W,s.H);
+  const w=Math.round(host.clientWidth), h=Math.round(host.clientHeight), key=w+'x'+h;
+  if(w<200||host.dataset.w===key) return;
+  host.dataset.w=key; const s=bubbleSize(w,h); host.innerHTML=bubbleChart(s.W,s.H);
 }
 let _bubbleTimer=null;
 window.addEventListener('resize',()=>{ clearTimeout(_bubbleTimer); _bubbleTimer=setTimeout(fitBubble,120); });
