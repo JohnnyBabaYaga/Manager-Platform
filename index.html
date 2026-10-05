@@ -122,7 +122,10 @@
   .mx-todo:hover{background:rgba(217,154,34,.2);}
   .mx-note{font-size:12px;padding:8px 12px;margin-bottom:10px;border-radius:9px;background:rgba(217,154,34,.1);color:#8a5d10;}
   .project-map-card{display:flex;flex-direction:column;gap:10px;margin-top:16px;}
-  .mx-sub{font-size:11px;color:var(--muted);margin:-4px 0 8px;line-height:1.7;}
+  .mx-sub{display:flex;align-items:center;flex-wrap:wrap;gap:2px 14px;font-size:11px;color:var(--muted);margin:-4px 0 8px;}
+  .mx-lg{display:flex;flex-wrap:wrap;gap:2px 10px;}
+  .mx-lg span{display:inline-flex;align-items:center;gap:4px;white-space:nowrap;}
+  .mx-lg i{width:9px;height:9px;border-radius:50%;display:inline-block;}
   .project-map-head{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap;}
   .project-map-head h3{font-size:14px;font-weight:800;color:var(--text);}
   .project-map-meta,.project-map-total{font-size:11px;color:var(--muted);}
@@ -699,9 +702,6 @@ const MX_CELLS=[
 function quadOptions(cur){
   return `<option value="" ${!cur?'selected':''}>（未分類）</option>`+MX_CELLS.map(c=>`<option value="${c.id}" ${cur===c.id?'selected':''}>${c.title}｜${c.axis}</option>`).join('');
 }
-function qdLegend(){
-  return `<span>${DATA.groups.map(gr=>`<span class="tag" style="background:${gr.color}33;color:#333">● ${esc(gr.name)}</span>`).join('')}</span>`;
-}
 function quadrantGroups(){
   const items=DATA.projects.map(p=>({p,b:projBenefit(p),h:projHeadcount(p)}));
   const cols=MX_CELLS.map(c=>Object.assign({size:'h'},c,{list:items.filter(it=>it.p.quad===c.id).sort((a,b)=>b.h-a.h)}));
@@ -1003,7 +1003,7 @@ function renderOverview(){
           <span class="mx-mgr">管理：部門指揮 Agent</span>
           <span class="mx-cycle"><b>資源創利循環</b>　<b style="color:#b8860b">現金流</b> → <b style="color:#4472c4">效率升級</b> → <b style="color:#4f9a1f">卡位</b> → <b style="color:#9048c8">未來引擎</b></span>
           <div class="mx-tools"><button class="mx-todo" onclick="classifyModal()">${mxTodo?`⚙ 未分類 ${mxTodo} 案，點此分類`:'⚙ 調整分類'}</button></div></div>
-        <div class="mx-sub">既有業務現金流、AI 升級毛利、成熟能力卡位、走出第二成長曲線　·　泡泡＝投入人數（各格獨立縮放）· 顏色＝廠區：${qdLegend()}</div>
+        <div class="mx-sub">泡泡＝投入人數（各格獨立縮放）<span class="mx-lg">${DATA.groups.map(gr=>`<span><i style="background:${gr.color}"></i>${esc(gr.name)}</span>`).join('')}</span></div>
         ${mxTodo===DATA.projects.length&&mxTodo?'<div class="mx-note">尚未指定任何專案的所屬格子：點右上「未分類」按鈕批次分類，或到「編輯專案」逐案設定。</div>':''}
         <div id="matrixHost">${quadrantBoard()}</div></div>
     </div>
