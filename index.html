@@ -121,6 +121,9 @@
   .project-map-note{font-size:10px;color:var(--muted);line-height:1.5;}
   .project-map-project{display:block;width:100%;text-align:left;font:inherit;cursor:pointer;margin-bottom:8px;}
   .project-map-project:focus-visible{outline:2px solid var(--blue2);outline-offset:2px;}
+  @media(min-width:1101px){
+    .overview-hero{grid-template-rows:1fr 1fr;}
+  }
   @media(max-width:1100px){
     .overview-hero{grid-template-columns:minmax(250px,1fr) minmax(0,1.7fr);}
     .project-map-layout{display:block;}
@@ -909,7 +912,7 @@ function renderOverview(){
   renderProjectMap();
   fitBubble();
 }
-function bubbleSize(w){ return {W:w, H:w>=900?240:(w>=600?260:Math.max(200,Math.round(w*.6)))}; }
+function bubbleSize(w){ return {W:w, H:window.innerWidth>1100?200:(w>=600?260:Math.max(200,Math.round(w*.6)))}; }
 function fitBubble(){
   const host=document.getElementById('bubbleHost'); if(!host) return;
   const w=Math.round(host.clientWidth); if(w<200||host.dataset.w==String(w)) return;
