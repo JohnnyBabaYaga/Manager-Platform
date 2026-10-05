@@ -754,13 +754,13 @@ function bubbleCluster(col,W,H){
     }
     n.r=r; n.x=pos?pos.x:W/2; n.y=pos?pos.y:H/2; placed.push(n);
   });
-  const tw=s=>{ let w=0; for(const ch of s) w+=ch.charCodeAt(0)>255?10.5:6.4; return w; };
-  const boxes=[], K=7, labels=[];
+  const tw=s=>{ let w=0; for(const ch of s) w+=ch.charCodeAt(0)>255?11:7; return w; };
+  const boxes=[], K=8, labels=[];
   nodes.slice(0,K).forEach(n=>{
-    const it=n.it;
-    const raw=it.p.name.replace(/\(.*?\)/g,'').replace('廠區導入自動化系統','').replace(/[\[\]]/g,'').trim();
-    const nm=raw.length>8?raw.slice(0,7)+'…':raw, w=tw(nm)+4, h=12;
-    for(const cy of [n.y,n.y-n.r-8,n.y+n.r+8]){
+    const it=n.it; let nm=it.p.name.trim();
+    const maxW=W-6; if(tw(nm)>maxW){ while(nm.length>2&&tw(nm+'…')>maxW) nm=nm.slice(0,-1); nm+='…'; } // 只有比整格還寬才截斷
+    const w=tw(nm)+6, h=14;
+    for(const cy of [n.y,n.y-n.r-8,n.y+n.r+8,n.y-n.r-20,n.y+n.r+20]){
       const x=Math.max(1,Math.min(W-w-1,n.x-w/2)), y=cy-h/2;
       if(y<0||y+h>H) continue;
       if(boxes.some(b=>x<b.x+b.w&&x+w>b.x&&y<b.y+b.h&&y+h>b.y)) continue;
