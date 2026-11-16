@@ -262,6 +262,16 @@
   .rp-tab.on .rp-tab-n{background:rgba(255,255,255,.28);opacity:1;}
   .rs-tools{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
   .rs-count{font-size:11px;color:var(--muted);font-weight:600;margin-left:auto;}
+  /* 策略頁（平台化）設定 */
+  .sp-box{background:#f4f7fc;border:1px solid var(--line);border-radius:11px;padding:12px 12px 4px;}
+  .sp-box .field input{background:rgba(255,255,255,.85);}
+  .sp-2{display:grid;grid-template-columns:1fr 1fr;gap:0 10px;}
+  .sp-q{display:grid;grid-template-columns:92px 110px 1fr 1fr;gap:6px;align-items:center;margin-bottom:6px;}
+  .sp-q.hd{font-size:11px;color:var(--muted);font-weight:700;margin-bottom:4px;}
+  .sp-q input{height:34px;padding:6px 10px;border:1px solid var(--line);border-radius:9px;font-size:12px;font-family:inherit;background:rgba(255,255,255,.85);width:100%;min-width:0;box-sizing:border-box;}
+  .sp-q .qn{font-weight:800;color:var(--blue);font-size:12px;}
+  .sp-tools{display:flex;align-items:center;gap:8px;margin:2px 0 10px;}
+  .sp-tools .hint{margin:0;}
 /* 載入畫面（10/27 Johnny：跟 AOI 計算器同款）：透明玻璃蓋整頁，小卡在正中間 */
 #boot{position:fixed;inset:0;z-index:2147483000;display:flex;align-items:center;justify-content:center;background:rgba(236,241,248,.22);
   -webkit-backdrop-filter:blur(2.5px);backdrop-filter:blur(2.5px);transition:opacity .35s ease;}
@@ -491,6 +501,8 @@ function migrate(d){ // 相容舊資料：補上新欄位
   if(!d.meta.title) d.meta.title='部門指揮中心';
   // One-Page 報告：記住各「Pillar｜類型」頁面上次勾選涵蓋的專案／技術（鍵例："Mobility|proj"）。空＝全部納入
   if(!d.meta.reportSel||typeof d.meta.reportSel!=='object'||Array.isArray(d.meta.reportSel)) d.meta.reportSel={};
+  // 策略頁（平台化）各 Pillar 的頁面文字與各季標籤／里程碑；只存跟預設不同的欄位
+  if(!d.meta.stratPage||typeof d.meta.stratPage!=='object'||Array.isArray(d.meta.stratPage)) d.meta.stratPage={};
   if(d.meta.schemaVersion==null) d.meta.schemaVersion=DEFAULT_DATA.meta.schemaVersion;
   if(!d.department) d.department=JSON.parse(JSON.stringify(DEFAULT_DATA.department));
   // setup 旗標：判斷此份資料是否已完成部門設定（有部門名稱即視為已設定，相容舊資料）
@@ -1433,21 +1445,28 @@ function editModuleCat(id){
   openModal(`<h3>${c?'編輯':'新增'}模塊分類</h3>
     <div class="field"><label>分類名稱</label><input id="f_catName" value="${c?esc(c.name):''}" placeholder="如 3D量檢測"></div>
     <div class="field"><label>代表顏色</label><input id="f_catColor" type="color" value="${c?c.color:'#2f6fd0'}" style="width:64px;height:38px;padding:2px"></div>
+    <div style="background:#f4f7fc;border-radius:8px;padding:10px 10px 0;margin-bottom:8px">
+      <div style="font-size:12px;font-weight:800;color:var(--blue);margin-bottom:8px">One-Page 策略頁用（都可留空）</div>
+      <div class="row"><div class="field" style="flex:2"><label>英文名稱</label><input id="f_catEn" value="${c?esc(c.en||''):''}" placeholder="如 Contour"><div class="hint">平台卡上中文名底下那行小字</div></div>
+        <div class="field" style="flex:1"><label>簡稱</label><input id="f_catShort" value="${c?esc(c.short||''):''}" placeholder="如 尺寸"><div class="hint">一條線掛 3 個以上平台時用</div></div></div>
+      <div class="field"><label>轉變句</label><input id="f_catShift" value="${c?esc(c.shift||''):''}" placeholder="如 離線抽檢 → 線上全檢"><div class="hint">一句話講這個平台帶來的改變，建議 12 個字內</div></div>
+    </div>
     <div class="hint">${c?'改名稱會同步套用到所有屬於此分類的模塊。':'建立後可在編輯模塊時選用此分類。'}</div>
     <div class="modal-foot"><button class="btn ghost" onclick="closeModal()">取消</button><button class="btn" onclick="saveModuleCat('${c?c.id:''}')">儲存</button></div>`);
 }
 function saveModuleCat(id){
   const name=val('f_catName').trim(), color=val('f_catColor');
+  const op={ en:val('f_catEn'), short:val('f_catShort'), shift:val('f_catShift') }; // One-Page 策略頁用
   if(!name){ alert('請輸入分類名稱'); return; }
   if(!DATA.moduleCats) DATA.moduleCats=[];
   if(id){
     const c=DATA.moduleCats.find(x=>x.id===id); const old=c.name;
     if(DATA.moduleCats.some(x=>x.id!==id&&x.name===name)){ alert('已有相同名稱的分類'); return; }
-    c.name=name; c.color=color;
+    c.name=name; c.color=color; Object.assign(c,op);
     if(old!==name) DATA.modules.forEach(m=>{ if((m.category||'')===old) m.category=name; }); // 改名同步
   } else {
     if(DATA.moduleCats.some(x=>x.name===name)){ alert('已有相同名稱的分類'); return; }
-    DATA.moduleCats.push({id:uid('mc'), name, color});
+    DATA.moduleCats.push(Object.assign({id:uid('mc'), name, color},op));
   }
   save(); closeModal(); render();
 }
@@ -1783,10 +1802,29 @@ function roleMemberFields(prefix, obj, label){
 }
 function collectRoleMembers(prefix){ const o={}; FUNC_ROLES.forEach((r,i)=>{ const ids=getChecked(prefix+i); if(ids.length) o[r]=ids; }); return o; }
 
+// ── One-Page 策略頁用的專案欄位：簡報顯示名稱 opName／導入季度 opQuarter（''＝自動）／產品圖 opImg（縮小後的 dataURL）
+let EDIT_OPIMG='';
+const OP_IMG_MAX=320; // 產品圖最長邊（px）；存進資料前先縮小，避免資料檔變大
+function etaQuarter(eta){ const m=String(eta||'').match(/(\d{4})[\/\-.](\d{1,2})/); if(!m||+m[2]<1||+m[2]>12) return ''; return `${m[1]} Q${Math.ceil(+m[2]/3)}`; }
+function projQuarter(p){ return p.opQuarter||etaQuarter(p.eta); }
+function opQuarterOptions(cur){ const qs=[]; ROADMAP_YEARS.forEach(y=>{ for(let q=1;q<=4;q++) qs.push(`${y} Q${q}`); }); if(cur&&!qs.includes(cur)) qs.unshift(cur);
+  return `<option value="" id="f_opQuarterAuto" ${cur?'':'selected'}>自動</option>`+qs.map(q=>`<option value="${esc(q)}" ${cur===q?'selected':''}>${esc(q)}</option>`).join(''); }
+function refreshOpQuarterAuto(){ const o=document.getElementById('f_opQuarterAuto'); if(!o) return; const q=etaQuarter(val('f_eta')); o.textContent=q?('自動 → '+q):'自動（預計完成日沒有日期）'; }
+function opImgRender(){ const t=document.getElementById('f_opImgThumb'), rm=document.getElementById('f_opImgRm'); if(!t) return;
+  t.innerHTML=EDIT_OPIMG?`<img src="${EDIT_OPIMG}" alt="" style="max-width:100%;max-height:100%;display:block">`:'尚無圖'; t.style.borderStyle=EDIT_OPIMG?'solid':'dashed'; if(rm) rm.style.display=EDIT_OPIMG?'':'none'; }
+function opImgPick(e){ const f=e.target.files[0]; e.target.value=''; if(!f) return; if(!/^image\//.test(f.type)){ alert('請選擇圖片檔（JPG／PNG）'); return; }
+  const r=new FileReader(); r.onload=()=>{ const im=new Image();
+    im.onload=()=>{ const k=Math.min(1,OP_IMG_MAX/Math.max(im.width,im.height)), w=Math.max(1,Math.round(im.width*k)), h=Math.max(1,Math.round(im.height*k));
+      const cv=document.createElement('canvas'); cv.width=w; cv.height=h; const cx=cv.getContext('2d'); cx.fillStyle='#fff'; cx.fillRect(0,0,w,h); cx.drawImage(im,0,0,w,h);
+      EDIT_OPIMG=cv.toDataURL('image/jpeg',.82); opImgRender(); };
+    im.onerror=()=>alert('這個圖片檔讀不出來，請換一張（JPG／PNG）'); im.src=r.result; };
+  r.readAsDataURL(f); }
+function opImgClear(){ EDIT_OPIMG=''; opImgRender(); }
 let EDIT_STATIONS=[];
 function editProject(id){
   const p = id?proj(id):{id:uid('p'),name:'',group:'XM',customer:'',phase:'',progress:0,eta:'',status:'正常',needs:[],moduleIds:[],memberIds:[],headcount:0,benefit:0,gains:'',stations:[]};
   EDIT_STATIONS=(p.stations||[]).map(st=>{ const srm=st.roleMembers||{}; return {id:st.id||uid('st'),name:st.name||'',phase:st.phase||'',progress:+st.progress||0,eta:st.eta||'',benefit:+st.benefit||0,moduleIds:[...(st.moduleIds||[])],ownerIds:[...(st.ownerIds||[])],roles:Array.isArray(st.roles)&&st.roles.length?[...st.roles]:Object.keys(srm),roleMembers:JSON.parse(JSON.stringify(srm))}; });
+  EDIT_OPIMG=p.opImg||'';
   openModal(`<h3>${id?'編輯':'新增'}專案</h3>
     <div class="field"><label>專案名稱</label><input id="f_name" value="${esc(p.name)}"></div>
     <div class="row"><div class="field" style="flex:1"><label>線體群組／廠區</label><select id="f_group" onchange="groupSelectChange(this)">${DATA.groups.slice().sort((a,b)=>String(a.name).localeCompare(String(b.name),'zh-Hant')).map(gr=>`<option value="${gr.id}" ${p.group===gr.id?'selected':''}>${esc(gr.name)}</option>`).join('')}<option value="__new__">＋ 新增廠區…</option></select></div>
@@ -1796,7 +1834,7 @@ function editProject(id){
     <div class="field"><label>地圖位置</label><select id="f_mapRegion">${projectMapOptions(p.mapRegion||'')}</select><div class="hint">預設依廠區設定／明確代碼對應；跨廠區或位置尚未確定時，可個別指定。不是客戶國籍。</div></div>
     <div class="field"><label>目前階段</label><input id="f_phase" value="${esc(p.phase)}"><div class="hint">填寫整個主專案的目前階段／狀態；各子專案（站點）階段請於下方各站個別填寫</div></div>
     <div class="row"><div class="field" style="flex:1"><label>進度 %</label><input id="f_progress" type="number" min="0" max="100" value="${p.progress||0}" oninput="refreshAutoStatus()"><div class="hint" id="f_progressHint" style="display:none">有 AOI 站點時，線進度＝各站平均自動計算</div></div>
-      <div class="field" style="flex:1"><label>預計完成日</label><input id="f_eta" type="date" value="${toDateInput(p.eta)}" onchange="refreshAutoStatus()"></div>
+      <div class="field" style="flex:1"><label>預計完成日</label><input id="f_eta" type="date" value="${toDateInput(p.eta)}" onchange="refreshAutoStatus();refreshOpQuarterAuto()"></div>
       <div class="field" style="flex:1"><label>狀態（自動）</label><div id="f_statusAuto" style="padding:7px 0">—</div><div class="hint">依進度與預計日自動判定</div></div>
       <div class="field" style="flex:1"><label>生命週期</label><select id="f_lifecycle">${LIFECYCLE_OPTS.map(([v,l])=>`<option value="${v}" ${(p.lifecycle||'active')===v?'selected':''}>${l}</option>`).join('')}</select><div class="hint">轉量產／Phase-out 會收到列表最下方「已完成」區</div></div></div>
     <div class="row" style="background:#f4f7fc;border-radius:8px;padding:10px 10px 0;margin-bottom:12px">
@@ -1804,6 +1842,20 @@ function editProject(id){
       <div class="field" style="flex:1.4"><label style="white-space:nowrap">投入人數（等效人力）</label><div style="font-size:20px;font-weight:800;color:var(--blue);padding:6px 0;white-space:nowrap">${Math.round(projFTE(p)*10)/10} 人</div><div class="hint">自動依成員角色工時%加總換算，無需手動填寫</div></div>
       <div class="field" style="flex:1"><label>產出效益（萬元/年）</label><input id="f_benefit" type="number" min="0" value="${+p.benefit||0}"><div class="hint">量化年效益金額</div><div class="hint" id="f_benefitHint" style="display:none">有 AOI 站點時，效益＝各站效益加總自動計算</div></div>
       <div class="field" style="flex:2"><label>效益內容</label><input id="f_gains" value="${esc(p.gains||'')}"><div class="hint">如：省2人, Cost↓15%, TT↓43%</div></div></div>
+    <div style="background:#f4f7fc;border-radius:8px;padding:10px 10px 0;margin-bottom:12px">
+      <div style="font-size:12px;font-weight:800;color:var(--blue);margin-bottom:8px">One-Page 策略頁用（都可留空）</div>
+      <div class="row">
+        <div class="field" style="flex:1"><label>簡報顯示名稱</label><input id="f_opName" value="${esc(p.opName||'')}" placeholder="如 STL 14.46"><div class="hint">產品卡上的短名；留空＝用專案名稱</div></div>
+        <div class="field" style="flex:1"><label>導入季度</label><select id="f_opQuarter">${opQuarterOptions(p.opQuarter||'')}</select><div class="hint">自動＝依預計完成日換算；要排到別欄才手動選</div></div>
+        <div class="field" style="flex:1.2"><label>產品圖</label>
+          <div style="display:flex;align-items:center;gap:8px;height:40px">
+            <div id="f_opImgThumb" style="width:56px;height:40px;flex:none;border:1px dashed var(--line);border-radius:8px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--muted);overflow:hidden"></div>
+            <button type="button" class="btn sm ghost" onclick="document.getElementById('f_opImgFile').click()">選擇圖片</button>
+            <button type="button" class="btn sm danger" id="f_opImgRm" onclick="opImgClear()">移除</button>
+            <input type="file" id="f_opImgFile" accept="image/*" style="display:none" onchange="opImgPick(event)">
+          </div><div class="hint">存檔時自動縮小；沒放圖，簡報上留虛線空格</div></div>
+      </div>
+    </div>
     <div class="field"><label>需求能力</label><input id="f_needs" value="${esc((p.needs||[]).join(', '))}"><div class="hint">逗號分隔</div></div>
     <div class="field"><label>專案 Leader（PM）</label><div class="hint" style="margin:-4px 0 6px">只設定專案負責人；技術模塊與各功能別工程師在下方「AOI 站點」依站指派。</div>${checkboxGrid('f_mems',DATA.members.map(m=>({id:m.id,label:m.name})),p.memberIds||[])}</div>
     <div class="field"><label>AOI 站點（站點成員與功能別在此設定）</label>
@@ -1813,6 +1865,7 @@ function editProject(id){
     <div class="modal-foot"><button class="btn ghost" onclick="closeModal()">取消</button><button class="btn" onclick="saveProject('${p.id}',${!!id})">儲存</button></div>`);
   rerenderStations();
   refreshAutoStatus();
+  refreshOpQuarterAuto(); opImgRender();
 }
 function stationsEditorHTML(){
   if(!EDIT_STATIONS.length) return '<div style="font-size:12px;color:var(--muted);padding:6px 0">（尚無站點，點下方按鈕新增）</div>';
@@ -1865,6 +1918,7 @@ function saveProject(pid,exists){
   const o=Object.assign({},orig||{}, { id:pid, name:val('f_name'), group:val('f_group'), mapRegion:val('f_mapRegion'), quad:val('f_quad'), domain:val('f_domain'), customer:val('f_customer'), phase:val('f_phase'),
     progress:+val('f_progress')||0, eta:fromDateInput(val('f_eta')),
     headcount:0, benefit:+val('f_benefit')||0, gains:val('f_gains'), weight:+val('f_weight')||1, lifecycle:val('f_lifecycle')||'active',
+    opName:val('f_opName'), opQuarter:val('f_opQuarter'), opImg:EDIT_OPIMG,
     needs:val('f_needs').split(/[,，]/).map(s=>s.trim()).filter(Boolean), moduleIds:(orig?orig.moduleIds||[]:[]), memberIds:getChecked('f_mems'), roleMembers:(orig?orig.roleMembers||{}:{}), stations });
   if(stations.length){ o.progress=projProgress(o); o.benefit=projBenefit(o); }
   o.status=autoStatus({progress:projProgress(o),eta:o.eta}).label; // 自動判定後存入，供匯出/相容
@@ -2152,21 +2206,91 @@ function reportPickerHTML(){
   const doms=['Mobility','Display','Vertical'];
   const domBtns=doms.map(d=>{ const n=rpDomainProjects(d).length; const c=domainColor(d);
     return `<button type="button" class="rp-tab${RP_DOMAIN===d?' on':''}" style="--tc:${c}" onclick="rpSetDomain('${d}')">${d}<span class="rp-tab-n">${n} 專案</span></button>`; }).join('');
-  const typeBtns=[['proj','專案進度（擴線）'],['tech','新技術進度']].map(([k,l])=>
+  const typeBtns=[['proj','專案進度（擴線）'],['tech','新技術進度'],['strat','策略頁（平台化）']].map(([k,l])=>
     `<button type="button" class="rp-tab${RP_TYPE===k?' on':''}" style="--tc:#1f4e96" onclick="rpSetType('${k}')">${l}</button>`).join('');
+  const isS=(RP_TYPE==='strat');
+  const hint=isS
+    ? '策略頁：左邊是各平台（＝模塊分類）卡片，右邊是「廠區 × 導入季度」矩陣。一個專案＝一條線；平台、測項、條線數、廠區、累積效益（各站效益加總）都由看板自動算。勾選不設上限。'
+    : '選擇 Pillar 與報告類型，再勾選本頁要涵蓋的項目（最多 10 項，版面才不會過載）。專案頁依「廠區」分區、技術頁依「技術分類」分區，並自動計算人均效益。未勾選＝自動取前 10 項。';
   return `<h3>One-Page 報告產生器</h3>
-    <div class="hint" style="margin-bottom:10px">選擇 Pillar 與報告類型，再勾選本頁要涵蓋的項目（最多 10 項，版面才不會過載）。專案頁依「廠區」分區、技術頁依「技術分類」分區，並自動計算人均效益。未勾選＝自動取前 10 項。</div>
+    <div class="hint" style="margin-bottom:10px">${hint}</div>
     <div class="field"><label>Pillar（事業領域）</label><div class="rp-tabs">${domBtns}</div></div>
     <div class="field"><label>報告類型</label><div class="rp-tabs">${typeBtns}</div></div>
     <div class="field"><label id="rpItemsLabel">涵蓋項目</label>
       <div class="rs-tools"><button type="button" class="btn ghost sm" onclick="rpToggleAll(true)">全選</button><button type="button" class="btn ghost sm" onclick="rpToggleAll(false)">全部清除</button><span class="rs-count" id="rpCount"></span></div>
       <div id="rpItemsBox"></div></div>
-    <div class="modal-foot"><button class="btn ghost" onclick="closeModal()">取消</button><button class="btn" onclick="generateReport()">產出 One-Page</button></div>`;
+    ${isS?stratCfgHTML(RP_DOMAIN):''}
+    <div class="modal-foot"><button class="btn ghost" onclick="closeModal()">取消</button><button class="btn" onclick="generateReport()">${isS?'產出策略頁':'產出 One-Page'}</button></div>`;
 }
 function rpSetDomain(d){ rpStashSel(); RP_DOMAIN=d; openModal(reportPickerHTML()); rpRefreshItems(); }
 function rpSetType(t){ rpStashSel(); RP_TYPE=t; openModal(reportPickerHTML()); rpRefreshItems(); }
 // 暫存目前勾選到記憶體（切換 Pillar/類型時不丟失）
-function rpStashSel(){ const box=document.getElementById('rpItemsBox'); if(!box) return; const sel=getChecked('rp_items'); DATA.meta.reportSel[rpSelKey(RP_DOMAIN,RP_TYPE)]=sel; }
+function rpStashSel(){ const box=document.getElementById('rpItemsBox'); if(!box) return; const sel=getChecked('rp_items'); DATA.meta.reportSel[rpSelKey(RP_DOMAIN,RP_TYPE)]=sel; if(RP_TYPE==='strat') stratStashCfg(); }
+
+/* ---------- 策略頁（平台化）設定：頁面文字＋各季標籤／里程碑（存在 DATA.meta.stratPage[Pillar]，只存跟預設不同的） ---------- */
+const STRAT_DEF={
+  title:'測項平台化：一套架構，{廠區數} 廠區 {條線數} 條新線同步導入',
+  l1:'由 16 個各自開發的檢測應用收斂而來', l2:'累積效益 = 各站效益加總',
+  r1:'新線 {起}～{迄}', r2:'色塊＝該線導入的平台',
+  vlabel:'通用架構',
+  conc:'**{平台數}** 平台用同 **1** 套架構：PM 與應用同仁只把新測項加入，即可在同一平台快速上線，並平展到各廠區。',
+  foot:'©2022 AUO Corporation Proprietary and Confidential'
+};
+const STRAT_FIELDS=['title','l1','l2','r1','r2','vlabel','conc','foot'];
+const STRAT_TAGS=['首站','第二波','第三波','第四波','第五波','第六波'];
+function stratDefTag(i){ return STRAT_TAGS[i]||`第${i+1}波`; }
+function stratCfg(domain){ const s=(DATA.meta.stratPage||{})[domain]||{}; const o={}; STRAT_FIELDS.forEach(k=>{ o[k]=(s[k]!=null)?s[k]:STRAT_DEF[k]; }); o.q=s.q||{}; return o; }
+// 目前勾選的線用到的季度（排序後）
+function stratSelQuarters(){ const ids=getChecked('rp_items'); const qs=new Set();
+  (DATA.projects||[]).filter(p=>ids.includes(p.id)).forEach(p=>{ const q=projQuarter(p); if(q) qs.add(q); });
+  return [...qs].sort(); }
+function stratCfgHTML(domain){
+  const c=stratCfg(domain);
+  const f=(id,label,v,ph)=>`<div class="field"><label>${label}</label><input id="sp_${id}" value="${esc(v)}" placeholder="${esc(ph||'')}"></div>`;
+  return `<div class="field"><label>頁面文字（策略頁）</label>
+    <div class="sp-box">
+      ${f('title','標題',c.title)}
+      <div class="sp-2">${f('l1','左上副文 1',c.l1)}${f('l2','左上副文 2（灰字）',c.l2)}</div>
+      <div class="sp-2">${f('r1','右上副文 1',c.r1)}${f('r2','右上副文 2（灰字）',c.r2)}</div>
+      ${f('conc','底部結論',c.conc)}
+      <div class="sp-2">${f('vlabel','左側直排標籤',c.vlabel)}${f('foot','頁尾',c.foot)}</div>
+      <div class="sp-tools"><div class="hint">可用 {廠區數} {條線數} {平台數} {測項數} {起} {迄}，產出時自動代入；結論裡用 **…** 包起來的字會變藍色大字。</div></div>
+      <div class="field" style="margin-bottom:6px"><label>各季標籤與里程碑（季度依勾選的線自動列出；里程碑可留空）</label>
+        <div class="sp-q hd"><span>季度</span><span>標籤</span><span>里程碑 1</span><span>里程碑 2</span></div>
+        <div id="spQBox"></div>
+        <datalist id="spTagList">${STRAT_TAGS.map(t=>`<option value="${t}">`).join('')}</datalist>
+      </div>
+      <div class="sp-tools"><button type="button" class="btn ghost sm" onclick="stratResetCfg()">↺ 還原預設文字</button><div class="hint">只會清掉這個 Pillar 的策略頁文字設定，不動勾選與看板資料。</div></div>
+    </div></div>`;
+}
+function stratRenderQ(){
+  const box=document.getElementById('spQBox'); if(!box) return;
+  if(box.children.length) stratStashCfg();
+  const c=stratCfg(RP_DOMAIN), qs=stratSelQuarters();
+  box.innerHTML = qs.length? qs.map((q,i)=>{ const s=c.q[q]||{};
+      return `<div class="sp-q" data-q="${esc(q)}"><span class="qn">${esc(q)}</span>
+        <input class="sp-qtag" list="spTagList" value="${esc(s.tag!=null?s.tag:stratDefTag(i))}">
+        <input class="sp-qm1" value="${esc(s.m1||'')}" placeholder="例：A02 S19 首站導入">
+        <input class="sp-qm2" value="${esc(s.m2||'')}" placeholder="（可留空）"></div>`; }).join('')
+    : `<div class="hint" style="padding:8px 10px;border:1px dashed var(--line);border-radius:9px;background:#fff">勾選的線都還沒有導入季度。請到專案編輯填「導入季度」或「預計完成日」。</div>`;
+}
+function stratStashCfg(){
+  if(!document.getElementById('sp_title')) return;
+  const old=(DATA.meta.stratPage||{})[RP_DOMAIN]||{}; const o={};
+  STRAT_FIELDS.forEach(k=>{ const el=document.getElementById('sp_'+k); if(!el) return; const v=el.value.trim(); if(v!==STRAT_DEF[k]) o[k]=v; });
+  const q=Object.assign({},old.q||{});
+  document.querySelectorAll('#spQBox .sp-q[data-q]').forEach((row,i)=>{ const k=row.dataset.q;
+    const tag=row.querySelector('.sp-qtag').value.trim(), m1=row.querySelector('.sp-qm1').value.trim(), m2=row.querySelector('.sp-qm2').value.trim();
+    const e={}; if(tag!==stratDefTag(i)) e.tag=tag; if(m1) e.m1=m1; if(m2) e.m2=m2;
+    if(Object.keys(e).length) q[k]=e; else delete q[k]; });
+  if(Object.keys(q).length) o.q=q;
+  if(!DATA.meta.stratPage) DATA.meta.stratPage={};
+  if(Object.keys(o).length) DATA.meta.stratPage[RP_DOMAIN]=o; else delete DATA.meta.stratPage[RP_DOMAIN];
+}
+function stratResetCfg(){ if(!confirm(`還原「${RP_DOMAIN}」策略頁的標題、副文、結論與各季標籤／里程碑為預設？`)) return;
+  const sel=getChecked('rp_items'); DATA.meta.reportSel[rpSelKey(RP_DOMAIN,RP_TYPE)]=sel;
+  if(DATA.meta.stratPage) delete DATA.meta.stratPage[RP_DOMAIN];
+  openModal(reportPickerHTML()); rpRefreshItems(); }
 function rpRefreshItems(){
   const box=document.getElementById('rpItemsBox'); if(!box) return;
   const lab=document.getElementById('rpItemsLabel');
@@ -2177,6 +2301,11 @@ function rpRefreshItems(){
     if(lab) lab.textContent=`涵蓋專案（${RP_DOMAIN}，依廠區分區）`;
     opts=ps.map(p=>({id:p.id,label:`${esc(p.name)}（${esc(g(p.group).name)}）`}));
     preset=(saved&&saved.length)?saved:ps.map(p=>p.id);
+  } else if(RP_TYPE==='strat'){
+    const ps=rpDomainProjects(RP_DOMAIN);
+    if(lab) lab.textContent=`涵蓋產線（${RP_DOMAIN}，一個專案＝一條線；不設上限）`;
+    opts=ps.map(p=>({id:p.id,label:`${p.opName||p.name}（${g(p.group).name} · ${projQuarter(p)||'無季度'}）`}));
+    preset=(saved&&saved.length)?saved:ps.filter(p=>projQuarter(p)).map(p=>p.id);
   } else {
     const ms=rpDomainModules(RP_DOMAIN);
     if(lab) lab.textContent=`涵蓋技術（${RP_DOMAIN}，依技術分類分區）`;
@@ -2189,11 +2318,30 @@ function rpRefreshItems(){
   box.querySelectorAll('input[name="rp_items"]').forEach(c=>c.addEventListener('change',rpUpdateCount));
 }
 const RP_MAX=10; // One-Page 版面最多顯示 10 個項目，避免資訊過載
-function rpToggleAll(v){ let n=0; document.querySelectorAll('input[name="rp_items"]').forEach(c=>{ c.checked = v && n<RP_MAX; if(c.checked) n++; }); rpUpdateCount(); }
+function rpToggleAll(v){ const lim=(RP_TYPE==='strat')?Infinity:RP_MAX; let n=0; document.querySelectorAll('input[name="rp_items"]').forEach(c=>{ c.checked = v && n<lim; if(c.checked) n++; }); rpUpdateCount(); }
 function rpUpdateCount(){ const el=document.getElementById('rpCount'); const boxes=[...document.querySelectorAll('input[name="rp_items"]')]; const on=boxes.filter(c=>c.checked).length;
+  if(RP_TYPE==='strat'){ // 策略頁不設上限
+    boxes.forEach(c=>{ c.disabled=false; });
+    if(el) el.textContent=`已選 ${on} 條線（策略頁不設上限）`;
+    stratRenderQ(); return; }
   boxes.forEach(c=>{ c.disabled = (!c.checked && on>=RP_MAX); }); // 已達上限時，鎖住其餘未勾選項目
   if(el) el.textContent=`已選 ${on} / ${RP_MAX} 上限${on===0?'（＝自動取前 10 項）':''}`; }
+function generateStratReport(){
+  const tot=document.querySelectorAll('input[name="rp_items"]').length;
+  const sel=getChecked('rp_items');
+  if(!sel.length){ alert('請至少勾選一條線。'); return; }
+  stratStashCfg();
+  DATA.meta.reportSel[rpSelKey(RP_DOMAIN,RP_TYPE)]=(sel.length===tot?[]:sel); save();
+  const domain=RP_DOMAIN;
+  closeModal();
+  const w=window.open('','_blank'); // 要在點擊當下開，之後才寫入（避免被擋）
+  if(!w){ alert('瀏覽器阻擋了新視窗，請允許彈出視窗後再試一次。'); return; }
+  w.document.open(); w.document.write('<meta charset="utf-8"><p style="font:14px sans-serif;padding:24px;color:#555">策略頁產生中…</p>');
+  buildStratReport(domain,sel).then(html=>{ w.document.open(); w.document.write(html); w.document.close(); })
+    .catch(err=>{ console.error(err); w.document.body.innerHTML='<p style="font:14px sans-serif;padding:24px;color:#b00">產生失敗：'+esc(String(err&&err.message||err))+'</p>'; });
+}
 function generateReport(){
+  if(RP_TYPE==='strat') return generateStratReport();
   const tot=document.querySelectorAll('input[name="rp_items"]').length;
   let sel=getChecked('rp_items'); if(!sel.length){ // 空＝自動取前 10 項
     sel=[...document.querySelectorAll('input[name="rp_items"]')].map(c=>c.value); }
@@ -2464,6 +2612,364 @@ function buildTechReport(domain, ids){
       chartItems:barItems,
       cards:cards.map(m=>({name:m.name,status:m.status,phase:m.phase||'—',prog:(+m.progress||0),eta:m.eta||'—'})) } });
 }
+/* ---------- 策略頁（平台化）輸出：看板資料 → 版面元素清單 → 預覽／列印／PPT ----------
+   版面規則照 OnePage報告/build_onepage.py（單位：吋／pt；13.333×7.5 吋寬螢幕）。 */
+const SPC={BLUE:'0F4C97',NAVY:'16324F',TEXT:'1E2A38',MUTED:'6B7785',LINE:'D5DCE5',PANEL:'F4F6F9',SOFT:'FAFBFC',BAND:'E9EDF2',WF:'174A94',WT:'7BA3D6',W:'FFFFFF'};
+let _spCtx=null;
+// 字寬（吋）：canvas 實量與粗估取大者，寧可估寬
+function stratTW(s,size,bold){
+  s=String(s==null?'':s); let est=0;
+  for(const ch of s) est+=(ch.codePointAt(0)>0x2E7F)?1.0:0.56;
+  est*=size/72;
+  try{ if(!_spCtx) _spCtx=document.createElement('canvas').getContext('2d');
+    _spCtx.font=`${bold?'700 ':''}${size}pt "Microsoft JhengHei","PingFang TC",sans-serif`;
+    const w=_spCtx.measureText(s).width; return w>0?w/96*1.05:est; }catch(e){ return est; }
+}
+function stratFit(s,maxw,sizes,bold,warn,where){
+  for(const z of sizes){ if(stratTW(s,z,bold)<=maxw) return z; }
+  if(warn&&s) warn.push(`${where||'文字'}放不下：「${s}」`);
+  return sizes[sizes.length-1];
+}
+function stratHex(c){ c=String(c||'').trim().replace('#','');
+  if(/^[0-9a-f]{3}$/i.test(c)) c=c.split('').map(x=>x+x).join('');
+  return /^[0-9a-f]{6}$/i.test(c)?c.toUpperCase():'8AA6C8'; }
+function stratBlend(h,o,t){ const a=stratHex(h), b=stratHex(o); let r='';
+  for(let i=0;i<3;i++){ const x=parseInt(a.substr(i*2,2),16), y=parseInt(b.substr(i*2,2),16);
+    r+=Math.round(x+(y-x)*t).toString(16).padStart(2,'0'); } return r.toUpperCase(); }
+function stratNum(n){ return Math.round(+n||0).toLocaleString('en-US'); }
+
+// 看板資料 → 策略頁內容（平台卡、廠區列、季度、統計、缺資料清單）
+function stratData(domain,sel){
+  const cfg=stratCfg(domain), warn=[], miss=[];
+  const MODS=DATA.modules||[];
+  const lname=p=>p.opName||p.name||'（未命名）';
+  const picked=(DATA.projects||[]).filter(p=>sel.includes(p.id));
+  picked.filter(p=>!projQuarter(p)).forEach(p=>miss.push([`「${lname(p)}」沒有導入季度，整條線沒放進策略頁`,'專案編輯 → 導入季度（或填預計完成日）']));
+  const isCat=c=>!!c&&c!=='未分類';
+  const catNames=(DATA.moduleCats||[]).map(c=>c.name).filter(isCat);
+  MODS.forEach(m=>{ if(isCat(m.category)&&!catNames.includes(m.category)) catNames.push(m.category); });
+  const noCat=new Set();
+  const lines=picked.filter(p=>projQuarter(p)).map(p=>{
+    const mids=projModuleIds(p).filter(id=>MODS.some(m=>m.id===id));
+    if(!mids.length) miss.push([`「${lname(p)}」沒有勾技術模塊（右邊照樣出現，但沒有平台標籤）`,'專案編輯（或各站點）→ 勾技術模塊']);
+    const cats=new Set();
+    mids.forEach(id=>{ const m=MODS.find(x=>x.id===id); if(isCat(m.category)) cats.add(m.category); else noCat.add(m.name); });
+    if(!p.opImg) miss.push([`「${lname(p)}」沒有產品圖（先留虛線空格）`,'專案編輯 → 產品圖']);
+    return {id:p.id,name:lname(p),img:p.opImg||'',group:p.group,q:projQuarter(p),mids,cats,p,plats:[]};
+  });
+  noCat.forEach(n=>{ warn.push(`技術模塊「${n}」沒有分類，沒算進任何平台`); miss.push([`技術模塊「${n}」沒有分類`,'技術模塊 → 編輯 → 設定分類']); });
+  const gOrder=(DATA.groups||[]).map(x=>x.id);
+  const gIdx=id=>{ const i=gOrder.indexOf(id); return i<0?1e9:i; };
+  const byGroup=ids=>[...new Set(ids)].sort((a,b)=>gIdx(a)-gIdx(b));
+  // 平台＝模塊分類（只列有被用到的；代號照分類順序，沒用到的會跳號）
+  const plats=[];
+  catNames.forEach((cn,i)=>{
+    const used=lines.filter(l=>l.cats.has(cn)); if(!used.length) return;
+    const co=(DATA.moduleCats||[]).find(c=>c.name===cn)||{};
+    const catMids=new Set(MODS.filter(m=>m.category===cn).map(m=>m.id));
+    const usedMids=new Set(); used.forEach(l=>l.mids.forEach(id=>{ if(catMids.has(id)) usedMids.add(id); }));
+    let ben=0; // 累積效益＝各站效益加總（站點有勾這個平台的模塊才算；一站跨多平台會分別計入）
+    used.forEach(l=>{ const st=l.p.stations||[];
+      if(st.length) st.forEach(s=>{ if((s.moduleIds||[]).some(id=>catMids.has(id))) ben+=(+s.benefit||0); });
+      else ben+=(+l.p.benefit||0); });
+    const idx=plats.length;
+    used.forEach(l=>l.plats.push(idx));
+    plats.push({code:'P'+(i+1),name:cn,en:co.en||'',short:co.short||cn.slice(0,4),shift:co.shift||'',
+      color:stratHex(co.color||catColor(cn)),n:used.length,groups:byGroup(used.map(l=>l.group)).map(id=>g(id).name),
+      items:MODS.filter(m=>usedMids.has(m.id)).map(m=>m.name),benefit:ben});
+    const lack=[!co.shift&&'轉變句',!co.en&&'英文名稱'].filter(Boolean);
+    if(lack.length) miss.push([`分類「${cn}」沒填${lack.join('、')}`,'技術模塊 → 編輯模塊分類（One-Page 策略頁用）']);
+  });
+  const rows=byGroup(lines.map(l=>l.group)).map(id=>({name:g(id).name,lines:lines.filter(l=>l.group===id)}));
+  const qs=[...new Set(lines.map(l=>l.q))].sort();
+  const stats={'廠區數':rows.length,'條線數':lines.length,'平台數':plats.length,
+    '測項數':plats.reduce((a,p)=>a+p.items.length,0),'起':qs[0]||'—','迄':qs[qs.length-1]||'—'};
+  const fill=s=>String(s||'').replace(/\{(廠區數|條線數|平台數|測項數|起|迄)\}/g,(m,k)=>stats[k]);
+  const quarters=qs.map((q,i)=>{ const s=cfg.q[q]||{}; return {name:q,tag:(s.tag!=null?s.tag:stratDefTag(i)),ms:[s.m1,s.m2].filter(Boolean)}; });
+  return {domain,warn,miss,plats,rows,lines,quarters,stats,imgSize:{},
+    title:fill(cfg.title),l1:fill(cfg.l1),l2:fill(cfg.l2),r1:fill(cfg.r1),r2:fill(cfg.r2),
+    vlabel:fill(cfg.vlabel),conc:fill(cfg.conc),foot:fill(cfg.foot),
+    date:(DATA.meta.updated||new Date().toISOString()).slice(0,10),dept:(DATA.department&&DATA.department.name)||''};
+}
+
+// 版面：輸出元素清單（rect／line／text／img），預覽與 PPT 共用同一份
+function stratLayout(D){
+  const E=[], W=D.warn, C=SPC, tw=stratTW;
+  const fit=(s,mw,zs,b,wh)=>stratFit(s,mw,zs,b,W,wh), bl=stratBlend;
+  const run=(s,z,c,b)=>({s:String(s==null?'':s),z,c:c||C.TEXT,b:!!b});
+  const clean=ps=>ps.map(pa=>pa.filter(r=>r.s!=='')).filter(pa=>pa.length);
+  const T=(x,y,w,h,paras,o)=>{ const e=Object.assign({t:'text',x,y,w,h,paras:clean(paras),align:'left',valign:'middle'},o||{}); E.push(e); return e; };
+  const B=(x,y,w,h,o)=>{ const e=Object.assign({t:'rect',x,y,w,h},o||{}); if(e.txt) e.txt.paras=clean(e.txt.paras); E.push(e); return e; };
+  // 最小字級仍放不下時截短加「…」，避免文字蓋到隔壁
+  const clip=(s,mw,z,b)=>{ s=String(s); if(tw(s,z,b)<=mw) return s; let t=[...s];
+    while(t.length>1&&tw(t.join('')+'…',z,b)>mw) t.pop(); return t.join('')+'…'; };
+  const pname=(l,mw,z)=>{ const s=clip(l.name,mw,z,true);
+    if(s!==l.name) W.push(`產品名「${l.name}」太長，畫面上截成「${s}」→ 可在專案編輯填較短的「簡報顯示名稱」`);
+    return s; };
+  const chip=(x,y,w,h,label,fill,z)=>B(x,y,w,h,{fill,r:.03,txt:{paras:[[run(label,z,C.W,true)]],align:'center',valign:'middle'}});
+  const L=.40, R=12.933, BT=1.40, BB=6.98, LR=4.90, RL=5.04, GAP=.06;
+
+  // 標題列
+  const tz=fit(D.title,10.2,[26,24,22,20],true,'標題');
+  T(L,.20,10.4,.50,[[run(D.title,tz,C.TEXT,true)]]);
+  T(R-2,.50,2,.22,[[run(D.date,9,C.MUTED)]],{align:'right'});
+  E.push({t:'line',x1:L,x2:R,y:.76,color:C.NAVY,lw:1.5});
+  const headline=(x,parts,s1,s2,maxr)=>{ const runs=[]; let ws=0;
+    parts.forEach(([n,u])=>{ runs.push(run(String(n),24,C.TEXT,true),run(` ${u}  `,11)); ws+=tw(String(n),24,true)+tw(` ${u}  `,11); });
+    T(x,.84,ws+.1,.46,[runs],{valign:'bottom'});
+    const sx=x+ws+.08;
+    [[s1,9.5],[s2,9]].forEach(([s,z])=>{ if(s&&tw(s,z)>maxr-sx) W.push(`副文太長：「${s}」`); });
+    T(sx,.88,maxr-sx,.42,[[run(s1,9.5,C.TEXT)],[run(s2,9,C.MUTED)]],{valign:'bottom'}); };
+  headline(L,[[D.stats['平台數'],'平台'],[D.stats['測項數'],'測項']],D.l1,D.l2,LR);
+  headline(RL,[[D.stats['條線數'],'條線'],[D.stats['廠區數'],'廠區']],D.r1,D.r2,R);
+
+  // 左半：直排標籤＋平台卡
+  B(L,BT,.30,BB-BT,{fill:C.BAND,r:.05,txt:{paras:[...D.vlabel].filter(c=>c.trim()).map(c=>[run(c,11,C.BLUE,true)]),align:'center',valign:'middle',ls:1.25}});
+  const P=D.plats, CX=L+.36, CW=LR-CX, BLK=.95, RW=1.00, MX=CX+BLK+.12, MW=CW-BLK-RW-.24;
+  if(!P.length){
+    if(!D.rows.length) T(CX,BT,CW,BB-BT,[[run('沒有可放的線，所以也沒有平台。',10,C.MUTED)],[run('（見右邊說明）',9,C.MUTED)]],{align:'center'});
+    else T(CX,BT,CW,BB-BT,[[run('勾選的線還沒有可歸到平台的技術模塊。',10,C.MUTED)],[run('請到專案（或站點）勾技術模塊，並幫模塊設定分類。',9,C.MUTED)]],{align:'center'});
+  } else {
+    const CH=(BB-BT-GAP*(P.length-1))/P.length;
+    const amt=p=>'NT$ '+stratNum(p.benefit);
+    let AZ=8.5, ok=false;
+    for(const z of [11,10.5,10,9.5,9,8.5]){ if(P.every(p=>tw(amt(p),z)+tw(' 萬/年',7)<=RW-.10)){ AZ=z; ok=true; break; } }
+    if(!ok) W.push('累積效益金額太長放不下');
+    P.forEach((p,i)=>{
+      const y=BT+i*(CH+GAP), c=p.color, cd=bl(c,'000000',.12), xr=CX+CW-RW;
+      B(CX,y,CW,CH,{fill:C.W,line:C.LINE});
+      B(xr,y,RW,CH,{fill:C.SOFT,line:C.LINE});
+      const nz=fit(p.name,BLK-.1,[15,14,13,12,11,10],true,p.code+' 名稱');
+      B(CX,y,BLK,CH,{fill:c,txt:{paras:[[run(p.code,13,C.W)],[run(p.name,nz,C.W,true)],[run(p.en,9,bl(c,C.W,.78))]],align:'center',valign:'middle',ls:1.1}});
+      // 中間：轉變句＋測項
+      const sh=.27, ig=.035;
+      let items=p.items.slice();
+      const nmax=Math.max(1,Math.floor((CH-.10-sh-.04+ig)/(.17+ig)));
+      if(items.length>nmax){ const k=items.length-(nmax-1); W.push(`${p.code} ${p.name} 測項太多（${p.items.length} 項），只放 ${nmax-1} 項＋「…另 ${k} 項」`); items=items.slice(0,nmax-1).concat([`…另 ${k} 項`]); }
+      const n=items.length;
+      const ih=Math.min(.22,(CH-.10-sh-.04-ig*Math.max(n-1,0))/Math.max(n,1));
+      const bh=sh+.04+n*ih+Math.max(n-1,0)*ig, y0=y+(CH-bh)/2;
+      if(p.shift){ const sz=fit(p.shift,MW,[12,11,10],true,p.code+' 轉變句'); T(MX,y0,MW,sh,[[run(p.shift,sz,cd,true)]]); }
+      items.forEach((it,k)=>{ const iy=y0+sh+.04+k*(ih+ig);
+        const iz=fit(it,MW-.16,[9.5,9,8.5,8],false,p.code+' 測項');
+        B(MX,iy,MW,ih,{fill:C.SOFT,line:C.LINE,lw:.5,txt:{paras:[[run(clip(it,MW-.16,iz,false),iz,C.TEXT)]],align:'left',valign:'middle',ml:.10,mb:.04}});
+        B(MX,iy,.035,ih,{fill:c}); });
+      // 右欄：條線數、廠區、累積效益
+      const cws=p.groups.map(s=>Math.min(tw(s,8,true)+.10,RW-.1)), rowsC=[]; let cur=[], cw=0;
+      p.groups.forEach((s,j)=>{ const w=cws[j]; if(cur.length&&cw+.04+w>RW-.1){ rowsC.push(cur); cur=[]; cw=0; } cw+=(cur.length?.04:0)+w; cur.push([s,w]); });
+      if(cur.length) rowsC.push(cur);
+      const chipBottom=y+CH-.39, fitRows=(top,step,h)=>{ let k=0; while(y+top+k*step+h<=chipBottom+1e-6) k++; return k; };
+      // 廠區標籤排不下時：數字與「條線」改成同一行，標籤間距縮小，多挪出一列
+      const tight=rowsC.length>fitRows(.59,.20,.16), ct=tight?.42:.59, cs=tight?.18:.20, chh=tight?.15:.16;
+      if(tight) T(xr,y+.01,RW,.38,[[run(String(p.n),22,c),run(' 條線',8.5,C.MUTED)]],{align:'center',valign:'middle'});
+      else { T(xr,y+.005,RW,.40,[[run(String(p.n),26,c)]],{align:'center'});
+        T(xr,y+.425,RW,.14,[[run('條線',8.5,C.MUTED)]],{align:'center'}); }
+      let shown=0;
+      rowsC.forEach((rw,ri)=>{ const cy=y+ct+ri*cs; if(cy+chh>chipBottom+1e-6) return;
+        const tot=rw.reduce((a,[,w])=>a+w,0)+.04*(rw.length-1); let cx=xr+(RW-tot)/2;
+        rw.forEach(([s,w])=>{ if(tw(s,8,true)+.10>RW-.1) W.push(`${p.code} 廠區名太長：「${s}」`); chip(cx,cy,w,chh,s,c,8); cx+=w+.04; shown++; }); });
+      if(shown<p.groups.length) W.push(`${p.code} 廠區標籤放不下（${p.groups.length} 個只放得下 ${shown} 個）`);
+      T(xr,y+CH-.37,RW,.13,[[run('累積效益',8,C.MUTED)]],{align:'center'});
+      T(xr,y+CH-.24,RW,.19,[[run(amt(p),AZ,cd),run(' 萬/年',7,cd)]],{align:'center'});
+    });
+  }
+
+  // 右半：廠區 × 季度
+  const Q=D.quarters, RWS=D.rows, HD=.70, CONC=.42, GB=BB-CONC-GAP, LW=.62, WX0=RL+LW;
+  B(RL,BT,R-RL,GB-BT,{fill:C.PANEL});
+  if(!Q.length||!RWS.length){
+    T(RL,BT,R-RL,GB-BT,[[run('沒有可放的線：勾選的線都還沒有導入季度。',10,C.MUTED)],[run('請到專案編輯填「導入季度」或「預計完成日」。',9,C.MUTED)]],{align:'center'});
+  } else {
+    // 欄寬依該季最擠的那格加權（1 條＝1、2–4 條＝1.6、5 條以上＝2），擠的季度分到較寬的欄
+    const qwt=Q.map(q=>Math.max(...RWS.map(rw=>{ const n=rw.lines.filter(l=>l.q===q.name).length; return n>4?2:n>1?1.6:1; })));
+    // 每季最低欄寬：該季每格的平台標籤（簡稱）要排得下
+    const PADW=.12, chipsW=l=>{ const pl=l.plats.map(k=>P[k]); return pl.length?pl.reduce((a,p)=>a+tw(p.short,7,true)+.09,0)+.03*(pl.length-1):0; };
+    const qneed=Q.map(q=>Math.max(...RWS.map(rw=>{ const c=rw.lines.filter(l=>l.q===q.name); if(!c.length) return 0;
+      const cols=c.length>4?3:Math.min(c.length,2); return cols*(Math.max(...c.map(chipsW))+PADW)+.05*(cols-1)+.12; })));
+    const qsum=qwt.reduce((a,v)=>a+v,0), WWs=qwt.map(v=>(R-WX0)*v/qsum);
+    if(qneed.reduce((a,v)=>a+v,0)<=R-WX0){ // 太窄的欄先補到最低寬，其餘欄依權重分剩下的
+      const fixed=new Set(); for(let it=0;it<Q.length;it++){ const free=Q.map((_,i)=>i).filter(i=>!fixed.has(i));
+        const rest=(R-WX0)-[...fixed].reduce((a,i)=>a+qneed[i],0), fw=free.reduce((a,i)=>a+qwt[i],0);
+        free.forEach(i=>WWs[i]=rest*qwt[i]/fw); [...fixed].forEach(i=>WWs[i]=qneed[i]);
+        const bad=free.filter(i=>WWs[i]<qneed[i]); if(!bad.length) break; bad.forEach(i=>fixed.add(i)); } }
+    const QX=WWs.map((_,i)=>WX0+WWs.slice(0,i).reduce((a,v)=>a+v,0));
+    const ROW_T=BT+HD+GAP, RH=(GB-ROW_T-.05*(RWS.length-1))/RWS.length, TIP=.18;
+    if(RH<.75) W.push(`廠區列太多（${RWS.length} 列），每列只有 ${RH.toFixed(2)} 吋高，產品卡會很擠`);
+    T(RL,BT,LW,HD,[[run('廠區',9,C.MUTED)]],{align:'center'});
+    const qcol=i=>bl(C.WF,C.WT,Q.length>1?i/(Q.length-1):0);
+    for(let i=Q.length-1;i>=0;i--){ const x=QX[i]; // 從右畫到左，箭頭尖蓋在下一欄上
+      if(i===Q.length-1) B(x,BT,WWs[i],HD,{fill:qcol(i)}); else B(x,BT,WWs[i]+TIP,HD,{fill:qcol(i),pent:TIP}); }
+    Q.forEach((q,i)=>{ const col=qcol(i), tx=QX[i]+(i===0?.14:.30), av=QX[i]+WWs[i]-tx-.04;
+      T(tx,BT+.05,1.3,.28,[[run(q.name,15,C.W,true)]]);
+      if(q.tag) chip(tx+tw(q.name,15,true)+.12,BT+.10,tw(q.tag,8,true)+.14,.18,q.tag,bl(col,C.W,.28),8);
+      const mz=q.ms.length?Math.min(...q.ms.map(m=>fit(m,av,[9,8.5,8,7.5],false,'里程碑'))):9;
+      q.ms.forEach((m,k)=>T(tx,BT+.335+k*.165,av,.16,[[run(m,mz,C.W)]])); });
+    const PAD=.06;
+    const chipRow=(pl,x,y,maxw,z,h,forceShort,name)=>{
+      const wsOf=key=>pl.map(p=>tw(p[key],z,true)+.09);
+      let key=(forceShort||pl.length>2)?'short':'name', ws=wsOf(key);
+      const sum=a=>a.reduce((s,v)=>s+v,0)+.03*(a.length-1);
+      if(sum(ws)>maxw&&key==='name'){ key='short'; ws=wsOf(key); }
+      if(pl.length&&sum(ws)>maxw) W.push(`平台標籤放不下：${name}`);
+      let cx=x; pl.forEach((p,k)=>{ chip(cx,y,ws[k],h,p[key],p.color,z); cx+=ws[k]+.03; }); };
+    const card=(l,x,y,w,h,vert)=>{
+      B(x,y,w,h,{fill:C.W,line:C.LINE,lw:.5,r:.04});
+      let ix,iy,iw,ih,tx,twm,ny,gy;
+      if(vert){ ix=x+.06; iy=y+.06; iw=w-.12; ih=h-.57; tx=x+.06; twm=w-.12; ny=y+h-.47; gy=y+h-.235; }
+      else { ix=x+.05; iy=y+.05; iw=w*.42; ih=h-.10; tx=ix+iw+.07; twm=w-(iw+.17); ny=y+h/2-.22; gy=y+h/2+.03; }
+      if(ih>=.12){ const sz=D.imgSize[l.id];
+        if(l.img&&sz){ const s=Math.min(iw/sz[0],ih/sz[1]); E.push({t:'img',data:l.img,x:ix+(iw-sz[0]*s)/2,y:iy+(ih-sz[1]*s)/2,w:sz[0]*s,h:sz[1]*s}); }
+        else B(ix,iy,iw,ih,{fill:C.SOFT,line:'B8C2CF',lw:.75,dash:true,r:.04,txt:{paras:[[run('產品圖',8,'9AA5B1')]],align:'center',valign:'middle'}}); }
+      const nz=stratFit(l.name,twm,[10,9.5,9,8.5,8],true);
+      T(tx,ny,twm,.20,[[run(pname(l,twm,nz),nz,C.TEXT,true)]]);
+      chipRow(l.plats.map(k=>P[k]),tx,gy,twm,7,.165,false,l.name); };
+    const mini=(l,x,y,w,h)=>{ // 一格超過 4 條：精簡卡（名稱＋簡稱標籤）
+      B(x,y,w,h,{fill:C.W,line:C.LINE,lw:.5,r:.04});
+      const nz=stratFit(l.name,w-.10,[9,8.5,8,7.5,7],true), pl=l.plats.map(k=>P[k]), nm=pname(l,w-.10,nz);
+      if(pl.length&&h>=.36){ const by=y+(h-.33)/2; T(x+.05,by,w-.10,.18,[[run(nm,nz,C.TEXT,true)]]); chipRow(pl,x+.05,by+.20,w-.10,6.5,.13,true,l.name); }
+      else { T(x+.05,y,w-.10,h,[[run(nm,nz,C.TEXT,true)]]); if(pl.length) W.push(`「${l.name}」那格太擠，平台標籤沒放`); } };
+    RWS.forEach((rw,ri)=>{ const ry=ROW_T+ri*(RH+.05);
+      if(ri>0) E.push({t:'line',x1:RL+.08,x2:R-.08,y:ry-.025,color:C.LINE,lw:.5});
+      const parts=rw.name.split(/[\s／\/]+/).filter(Boolean);
+      const lz=Math.min(...parts.map(s=>fit(s,LW-.06,[14,12,11,10],true,'廠區名')));
+      T(RL,ry,LW,RH,parts.map(s=>[run(s,lz,C.BLUE,true)]).concat([[run(`${rw.lines.length} 條線`,8.5,C.MUTED)]]),{align:'center'});
+      const first=Math.min(...rw.lines.map(l=>Q.findIndex(q=>q.name===l.q)));
+      if(first>0) T(WX0,ry,QX[first]-WX0,RH,[[run(`${Q[first].name} 起導入 →`,9,C.MUTED)]],{align:'center'});
+      Q.forEach((q,wi)=>{ let cell=rw.lines.filter(l=>l.q===q.name); if(!cell.length) return;
+        if(cell.length>9){ W.push(`${rw.name}／${q.name} 一格 ${cell.length} 條線，只放前 9 條`); cell=cell.slice(0,9); }
+        const cx0=QX[wi]+PAD, cy0=ry+.04, cwid=WWs[wi]-2*PAD, chei=RH-.08;
+        const cols=cell.length>4?3:Math.min(cell.length,2), nrow=Math.ceil(cell.length/cols);
+        const kw=(cwid-.05*(cols-1))/cols, kh=(chei-.05*(nrow-1))/nrow;
+        // 橫式卡（圖左字右）的文字寬不到 .8 吋就放不下名稱 → 這格改精簡卡（不放圖）
+        const big=cell.length>4||(nrow>1&&kw*.58-.12<.80);
+        if(big&&cell.length<=4) W.push(`${rw.name}／${q.name} 一格 ${cell.length} 條線、格子太窄，改用精簡卡（產品圖沒放）`);
+        cell.forEach((l,k)=>{ const kx=cx0+(k%cols)*(kw+.05), ky=cy0+Math.floor(k/cols)*(kh+.05);
+          if(big) mini(l,kx,ky,kw,kh); else card(l,kx,ky,kw,kh,nrow===1); }); });
+    });
+  }
+
+  // 結論列
+  const segs=D.conc.split('**'); let cz=10, cok=false;
+  for(const z of [12,11.5,11,10.5,10]){ const ws=segs.reduce((a,s,j)=>a+tw(s,j%2?20:z,true),0); if(ws<=R-RL-.30){ cz=z; cok=true; break; } }
+  if(!cok&&D.conc) W.push('結論句太長放不下');
+  B(RL,GB+GAP,R-RL,CONC,{fill:C.PANEL,line:C.LINE,txt:{paras:[segs.map((s,j)=>j%2?run(s,20,C.BLUE,true):run(s,cz,C.TEXT,true))],align:'left',valign:'middle',ml:.15,mb:.10}});
+  // 頁尾
+  T(L,7.10,6,.22,[[run((D.dept?D.dept+'　｜　':'')+D.foot,8,C.MUTED)]]);
+  return E;
+}
+
+// 元素清單 → 預覽用 HTML（絕對定位，單位 in／pt）
+function stratSlideHTML(els){
+  const I=v=>(+v).toFixed(3)+'in';
+  const txt=t=>{ const jc={top:'flex-start',middle:'center',bottom:'flex-end'}[t.valign||'middle'];
+    const ps=(t.paras||[]).map(pa=>`<div style="text-align:${t.align||'left'};line-height:${((t.ls||1)*1.2).toFixed(3)}">${pa.map(r=>`<span style="font-size:${r.z}pt;color:#${r.c};font-weight:${r.b?700:400}">${esc(r.s)}</span>`).join('')}</div>`).join('');
+    return `<div class="spt" style="justify-content:${jc};padding:${I(t.mt||0)} ${I(t.mr||0)} ${I(t.mb||0)} ${I(t.ml||0)}">${ps}</div>`; };
+  const pos=e=>`left:${I(e.x)};top:${I(e.y)};width:${I(e.w)};height:${I(e.h)};`;
+  return els.map(e=>{
+    if(e.t==='line') return `<div class="spe" style="left:${I(e.x1)};top:${I(e.y)};width:${I(e.x2-e.x1)};height:0;border-top:${e.lw}pt solid #${e.color};transform:translateY(-50%)"></div>`;
+    if(e.t==='img') return `<img class="spe" src="${e.data}" style="${pos(e)}" alt="">`;
+    if(e.t==='text') return `<div class="spe" style="${pos(e)}">${txt(e)}</div>`;
+    let st=pos(e)+`background:${e.fill?'#'+e.fill:'transparent'};`;
+    if(e.line) st+=`border:${e.lw||.75}pt ${e.dash?'dashed':'solid'} #${e.line};`;
+    if(e.r) st+=`border-radius:${I(e.r)};`;
+    if(e.pent!=null) st+=`clip-path:polygon(0 0,calc(100% - ${I(e.pent)}) 0,100% 50%,calc(100% - ${I(e.pent)}) 100%,0 100%);`;
+    return `<div class="spe" style="${st}">${e.txt?txt(e.txt):''}</div>`;
+  }).join('');
+}
+
+// 元素清單 → PPT（這個函式會被 .toString() 注入報告視窗執行；不要用反引號、不要引用主頁的變數）
+function stratPptxRun(R){
+  var P=new PptxGenJS(); P.defineLayout({name:'W',width:13.333,height:7.5}); P.layout='W';
+  var S=P.addSlide(); S.background={color:'FFFFFF'};
+  var F='Microsoft JhengHei';
+  function runs(paras){ var out=[]; paras.forEach(function(pa,i){ pa.forEach(function(r,j){
+      var o={fontSize:r.z,bold:!!r.b,color:r.c,fontFace:F};
+      if(j===pa.length-1&&i<paras.length-1) o.breakLine=true;
+      out.push({text:r.s,options:o}); }); }); return out; }
+  function tOpts(t,o){ o.align=t.align||'left'; o.valign=t.valign||'middle'; o.wrap=false; o.fit='none';
+    o.margin=[(t.ml||0)*72,(t.mr||0)*72,(t.mb||0)*72,(t.mt||0)*72];
+    if(t.ls&&t.ls!==1) o.lineSpacingMultiple=t.ls; return o; }
+  (R.els||[]).forEach(function(e){
+    if(e.t==='line'){ S.addShape(P.ShapeType.line,{x:e.x1,y:e.y,w:e.x2-e.x1,h:0,line:{color:e.color,width:e.lw}}); return; }
+    if(e.t==='img'){ S.addImage({data:String(e.data).replace(/^data:/,''),x:e.x,y:e.y,w:e.w,h:e.h}); return; }
+    if(e.t==='text'){ if(e.paras&&e.paras.length) S.addText(runs(e.paras),tOpts(e,{x:e.x,y:e.y,w:e.w,h:e.h})); return; }
+    var o={x:e.x,y:e.y,w:e.w,h:e.h}, type=P.ShapeType.rect;
+    if(e.fill) o.fill={color:e.fill};
+    if(e.line){ o.line={color:e.line,width:e.lw||0.75}; if(e.dash) o.line.dashType='dash'; }
+    if(e.pent!=null){ type=P.ShapeType.homePlate; o.rectRadius=e.pent; }
+    else if(e.r){ type=P.ShapeType.roundRect; o.rectRadius=e.r; }
+    if(e.txt&&e.txt.paras&&e.txt.paras.length){ o.shape=type; S.addText(runs(e.txt.paras),tOpts(e.txt,o)); }
+    else S.addShape(type,o);
+  });
+  return P.writeFile({fileName:R.file||'策略頁.pptx'});
+}
+
+// 產生策略頁：先讀產品圖尺寸，再排版、組報告視窗
+function buildStratReport(domain,sel){
+  const D=stratData(domain,sel);
+  const loads=D.lines.filter(l=>l.img).map(l=>new Promise(res=>{ const im=new Image();
+    im.onload=()=>{ D.imgSize[l.id]=[im.naturalWidth||1,im.naturalHeight||1]; res(); };
+    im.onerror=()=>{ D.warn.push(`「${l.name}」的產品圖讀不出來，先留空格`); l.img=''; res(); };
+    im.src=l.img; }));
+  return Promise.all(loads).then(()=>stratReportHTML(D,stratLayout(D)));
+}
+function stratReportHTML(D,els){
+  const file=(D.title||'策略頁').replace(/[\\/:*?"<>|]/g,'').slice(0,40)+'_'+D.date+'.pptx';
+  const payload=JSON.stringify({els,file}).replace(/</g,'\\u003c');
+  const li=a=>a.map(x=>`<li>${x}</li>`).join('');
+  const missHTML=D.miss.length?`<ul>${li(D.miss.map(([w,where])=>`${esc(w)}<span class="where">→ ${esc(where)}</span>`))}</ul>`:'<p class="ok">沒有缺資料。</p>';
+  const warnHTML=D.warn.length?`<ul>${li(D.warn.map(esc))}</ul>`:'<p class="ok">沒有放不下的文字。</p>';
+  const platRows=D.plats.map(p=>`<tr><td><i style="background:#${p.color}"></i>${esc(p.code)} ${esc(p.name)}</td><td>${p.n}</td><td>${esc(p.groups.join('、'))}</td><td>${esc(p.items.join('、'))}</td><td class="r">NT$ ${stratNum(p.benefit)}</td></tr>`).join('');
+  const s=D.stats;
+  const css=`*{box-sizing:border-box;margin:0;padding:0}
+    body{background:#e9edf2;font-family:"Microsoft JhengHei","PingFang TC","Heiti TC",sans-serif;color:#1e2a38;padding:16px 20px 40px}
+    .rp-btns{display:flex;gap:8px;margin:0 auto 14px;width:13.333in;max-width:100%}
+    .rp-btns button{background:#1f4e96;color:#fff;border:none;padding:8px 18px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer}
+    .rp-btns button.ghost{background:#fff;color:#1f4e96;border:1px solid #1f4e96}
+    .rp-btns button:disabled{opacity:.6;cursor:default}
+    .sp-wrap{width:13.333in;margin:0 auto}
+    .sp-slide{position:relative;width:13.333in;height:7.5in;background:#fff;overflow:hidden;box-shadow:0 4px 18px rgba(22,50,79,.18);font-family:"Microsoft JhengHei","PingFang TC","Heiti TC",sans-serif}
+    .spe{position:absolute;box-sizing:border-box}
+    .spt{position:absolute;inset:0;display:flex;flex-direction:column;white-space:pre}
+    .sp-check{width:13.333in;max-width:100%;margin:18px auto 0;background:#fff;border-radius:12px;padding:16px 20px;font-size:13px;line-height:1.6;box-shadow:0 2px 8px rgba(22,50,79,.08)}
+    .sp-check h3{font-size:15px;color:#16324f;margin-bottom:6px}
+    .sp-check h4{font-size:13px;color:#0f4c97;margin:12px 0 4px}
+    .sp-check ul{padding-left:20px}
+    .sp-check .where{color:#6b7785;margin-left:8px}
+    .sp-check .ok{color:#2a8c61}
+    .sp-check table{border-collapse:collapse;width:100%;margin-top:4px;font-size:12px}
+    .sp-check th,.sp-check td{border-bottom:1px solid #e2e7ef;padding:4px 8px;text-align:left;vertical-align:top}
+    .sp-check th{color:#6b7785;font-weight:700}
+    .sp-check td.r{text-align:right;white-space:nowrap}
+    .sp-check td i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+    @page{size:13.333in 7.5in;margin:0}
+    @media print{body{background:#fff;padding:0}.rp-btns,.sp-check{display:none}.sp-wrap{zoom:1!important}.sp-slide{box-shadow:none}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}}`;
+  return `<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><title>${esc(D.title)}</title><style>${css}</style></head><body>
+    <div class="rp-btns"><button onclick="exportPPT(this)">📊 存 PPT</button><button onclick="window.print()">🖨️ 列印 / 存 PDF</button><button class="ghost" onclick="window.close()">關閉</button></div>
+    <div class="sp-wrap" id="spWrap"><div class="sp-slide">${stratSlideHTML(els)}</div></div>
+    <div class="sp-check"><h3>自我檢查（只在畫面上，列印與 PPT 都不會出現）</h3>
+      <div>由看板算出：<b>${s['平台數']}</b> 平台 <b>${s['測項數']}</b> 測項｜<b>${s['條線數']}</b> 條線 <b>${s['廠區數']}</b> 廠區｜${esc(s['起'])}～${esc(s['迄'])}（${esc(D.domain)}）</div>
+      ${D.plats.length?`<table><tr><th>平台</th><th>條線</th><th>廠區</th><th>測項</th><th class="r">累積效益（萬/年）</th></tr>${platRows}</table>`:''}
+      <h4>缺資料（去哪補）</h4>${missHTML}
+      <h4>版面警告</h4>${warnHTML}
+    </div>
+    <script>window.RPT=${payload};<\/script>
+    <script>
+    function rpLoadScript(src){ return new Promise(function(res,rej){ var s=document.createElement('script'); s.src=src; s.onload=res; s.onerror=function(){rej(new Error('load fail'));}; document.head.appendChild(s); }); }
+    function rpEnsurePptx(){ if(window.PptxGenJS) return Promise.resolve(); return rpLoadScript('https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js'); }
+    ${stratPptxRun.toString()}
+    function exportPPT(btn){
+      var old=btn.textContent; btn.disabled=true; btn.textContent='產生中…';
+      rpEnsurePptx().then(function(){ return stratPptxRun(window.RPT); })
+        .then(function(){ btn.textContent=old; btn.disabled=false; })
+        .catch(function(err){ btn.textContent=old; btn.disabled=false; console.error(err);
+          alert(window.PptxGenJS?('產生 PPT 失敗：'+(err&&err.message||err)):'需要連網才能產生 PPT；離線時請改用「列印 / 存 PDF」。'); });
+    }
+    function spFit(){ var w=document.getElementById('spWrap'); var z=Math.min(1,(window.innerWidth-40)/1280); w.style.zoom=z>0.3?z:0.3; }
+    window.addEventListener('resize',spFit); spFit();
+    <\/script></body></html>`;
+}
+
 // 卡片/長條圖用：去括號取短名
 function rpShort(name){ return String(name||'').replace(/[（(].*?[）)]/g,'').replace(/#/g,'').trim().slice(0,14); }
 function toggleDataMenu(e){ e.stopPropagation(); const m=document.getElementById('dataMenu'); m.style.display=(m.style.display==='none')?'block':'none'; }
