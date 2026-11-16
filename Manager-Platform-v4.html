@@ -369,7 +369,7 @@
 const STORE_KEY = 'managerPlatformData_v1';
 
 const DEFAULT_DATA = {
-  meta:{ updated:'2026-06-14', version:'v4.0', schemaVersion:3, title:'部門指揮中心', setup:false }, // v4.0：新增依 Pillar 產出 One-Page 自動報告（人均效益）；沿用多部門資料模型
+  meta:{ updated:'2026-06-14', version:'v4.1', schemaVersion:3, title:'部門指揮中心', setup:false }, // v4.0：新增依 Pillar 產出 One-Page 自動報告（人均效益）；沿用多部門資料模型
   // department：本份資料屬於哪個部門的自我描述（未來集團總覽彙整多份 data.json 時靠它識別）
   department:{ id:'', name:'', code:'', color:'#2f6fd0', manager:'', email:'' },
   groups:[
@@ -1701,7 +1701,7 @@ function applyDeptTheme(){
   const rgb=hexRgb(c), drgb=hexRgb(dk), h=document.querySelector('header');
   if(h) h.style.background=`linear-gradient(120deg,rgba(${drgb.r},${drgb.g},${drgb.b},.82),rgba(${rgb.r},${rgb.g},${rgb.b},.74))`;
 }
-function renderTitle(){ const nm=deptName(); const code=(DATA.department&&DATA.department.code)||''; const el=document.getElementById('appTitle'); if(el) el.innerHTML=esc(nm)+(code?` <span style="font-weight:600;opacity:.8;font-size:.82em">${esc(code)}</span>`:''); const vb=document.getElementById('appVer'); if(vb) vb.textContent=(DATA.meta&&DATA.meta.version)||'v4.0'; document.title=nm+(code?` (${code})`:'')+' | 指揮中心'; applyDeptTheme(); }
+function renderTitle(){ const nm=deptName(); const code=(DATA.department&&DATA.department.code)||''; const el=document.getElementById('appTitle'); if(el) el.innerHTML=esc(nm)+(code?` <span style="font-weight:600;opacity:.8;font-size:.82em">${esc(code)}</span>`:''); const vb=document.getElementById('appVer'); if(vb) vb.textContent=(DATA.meta&&DATA.meta.version)||'v4.1'; document.title=nm+(code?` (${code})`:'')+' | 指揮中心'; applyDeptTheme(); }
 function showDeptSetup(first){
   const d=DATA.department||{};
   openModal(`<h3>${first?'建立你的指揮中心':'部門設定'}</h3>
@@ -1730,7 +1730,7 @@ function saveDeptSetup(){
   save(); renderTitle(); closeModal();
 }
 function skipDeptSetup(){ DATA.meta.setup=true; save(); closeModal(); }
-function showAbout(){ const ver=(DATA.meta&&DATA.meta.version)||'v4.0'; const verDate='2026-06-14'; const upd=(DATA.meta&&DATA.meta.updated)||''; const d=DATA.department||{}; const hasMgr=!!(d.manager||d.email); openModal(`<h2 style="margin:0 0 14px">關於本平台</h2>
+function showAbout(){ const ver=(DATA.meta&&DATA.meta.version)||'v4.1'; const verDate='2026-11-16'; const upd=(DATA.meta&&DATA.meta.updated)||''; const d=DATA.department||{}; const hasMgr=!!(d.manager||d.email); openModal(`<h2 style="margin:0 0 14px">關於本平台</h2>
   <div style="line-height:1.9;font-size:14px">
     <div style="font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.5px">部門資訊</div>
     <div><b style="font-size:15px">${esc(deptName())}</b></div>
