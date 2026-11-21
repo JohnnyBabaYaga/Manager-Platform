@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bgB" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#16508f"/><stop offset="1" stop-color="#0B3263"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bgB)"/>
+  <!-- AOS 圓環 -->
+  <circle cx="256" cy="256" r="196" fill="none" stroke="#ffffff" stroke-width="26"/>
+  <!-- 羽翼（AOS 老鷹元素）：深藍邊切開圓環，根部藏在最高長條後面 -->
+  <g fill="#80BC49" stroke="#134784" stroke-width="12" paint-order="stroke" stroke-linejoin="round">
+    <path d="M316,300 Q384,324 428,270 Q414,346 316,344 Z"/>
+    <path d="M316,244 Q400,280 474,170 Q450,314 316,294 Z"/>
+    <path d="M318,208 Q386,222 456,92 Q436,252 318,240 Z"/>
+  </g>
+  <!-- 看板長條（成長） -->
+  <rect x="130" y="296" width="54" height="84" rx="10" fill="#ffffff"/>
+  <rect x="204" y="240" width="54" height="140" rx="10" fill="#ffffff"/>
+  <path d="M278,214 L332,190 L332,370 Q332,380 322,380 L288,380 Q278,380 278,370 Z" fill="#80BC49"/>
+</svg>
